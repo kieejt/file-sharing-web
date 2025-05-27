@@ -2,8 +2,6 @@
 
 Ứng dụng web cho phép người dùng tải lên, quản lý và chia sẻ file một cách dễ dàng và an toàn.
 
-![FileShare Screenshot](screenshot.png)
-
 ## Tính năng chính
 
 - Đăng ký và đăng nhập người dùng
@@ -153,7 +151,5 @@ Xem lịch sử thay đổi trong [CHANGELOG.md](CHANGELOG.md).
 Dự án này được cấp phép theo giấy phép MIT - xem file [LICENSE](LICENSE) để biết thêm chi tiết.
 
 ## Liên hệ
-
-Kieejt - [kieejt@gmail.com](mailto:kieejt@gmail.com)
 
 Link dự án: [https://github.com/kieejt/file-sharing-web](https://github.com/kieejt/file-sharing-web) 
