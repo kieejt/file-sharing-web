@@ -7,7 +7,6 @@ Backend cho ứng dụng chia sẻ file.
 - Node.js
 - Express.js
 - MongoDB (Mongoose)
-- MongoDB Compass
 - JWT Authentication
 - Multer (xử lý upload file)
 - Bcrypt (mã hóa mật khẩu)
@@ -19,7 +18,6 @@ Backend cho ứng dụng chia sẻ file.
 ### Cách 1: Chạy trực tiếp trên máy
 1. Node.js (phiên bản 14 trở lên)
 2. MongoDB Community Server
-3. MongoDB Compass (GUI cho MongoDB)
 
 ### Cách 2: Chạy với Docker
 1. Docker Desktop
@@ -31,8 +29,8 @@ Backend cho ứng dụng chia sẻ file.
 
 1. Clone repository:
    ```
-   git clone <repository-url>
-   cd file-sharing-app/server
+   git clone https://github.com/kieejt/file-sharing-web.git
+   cd file-sharing-web/server
    ```
 
 2. Cài đặt dependencies:
@@ -40,17 +38,12 @@ Backend cho ứng dụng chia sẻ file.
    npm install
    ```
 
-3. Cài đặt MongoDB:
-   - Tải và cài đặt MongoDB Community Server từ: https://www.mongodb.com/try/download/community
-   - Tải và cài đặt MongoDB Compass từ: https://www.mongodb.com/try/download/compass
-
-4. Cấu hình MongoDB:
+3. Cấu hình MongoDB:
    - Khởi động MongoDB Service
-   - Mở MongoDB Compass
    - Kết nối tới MongoDB local với connection string: `mongodb://localhost:27017`
    - Tạo database mới với tên "fileshare"
 
-5. Tạo file `.env` dựa trên file `.env.example`:
+4. Tạo file `.env` dựa trên file `.env.example`:
    ```
    cp .env.example .env
    ```
@@ -62,16 +55,16 @@ Backend cho ứng dụng chia sẻ file.
    MONGO_URI=mongodb://localhost:27017/fileshare
    JWT_SECRET=your_jwt_secret
    JWT_EXPIRE=30d
-   FILE_UPLOAD_PATH=./uploads
+   FILE_UPLOAD_PATH=../uploads
    MAX_FILE_SIZE=10000000
    ```
 
-6. Khởi tạo dữ liệu mẫu (tùy chọn):
+5. Khởi tạo dữ liệu mẫu (tùy chọn):
    ```
    npm run seed
    ```
 
-7. Chạy ứng dụng:
+6. Chạy ứng dụng:
    - Môi trường phát triển:
      ```
      npm run dev
@@ -85,19 +78,18 @@ Backend cho ứng dụng chia sẻ file.
 
 1. Cài đặt Docker:
    - Tải và cài đặt Docker Desktop từ: https://www.docker.com/products/docker-desktop
-   - Khởi động Docker Desktop và đợi cho đến khi nó hoàn toàn khởi động (biểu tượng Docker trong system tray chuyển sang màu xanh)
+   - Khởi động Docker Desktop
 
 2. Clone repository và di chuyển vào thư mục dự án:
    ```
-   git clone <repository-url>
-   cd file-sharing-app
+   git clone https://github.com/kieejt/file-sharing-web.git
+   cd file-sharing-web
    ```
 
 3. Tạo file `.env` trong thư mục gốc:
    ```
-   cp .env.example .env
+   cp .env.docker .env
    ```
-   Cập nhật các biến môi trường cần thiết trong file `.env`
 
 4. Build và chạy containers:
    ```
@@ -114,41 +106,29 @@ Backend cho ứng dụng chia sẻ file.
    docker-compose down
    ```
 
-Lưu ý: Nếu bạn gặp lỗi khi chạy docker-compose, hãy kiểm tra:
-- Docker Desktop đã được cài đặt và đang chạy
-- Không có ứng dụng nào đang sử dụng các cổng 27017 (MongoDB), 5000 (Backend) và 3000 (Frontend)
-- Windows Subsystem for Linux 2 (WSL2) đã được cài đặt (cho Windows)
-
 ## Cấu trúc dự án
 
 ```
 server/
 ├── config/                # Cấu hình
-│   └── db.js
+│   └── db.js             # Cấu hình kết nối MongoDB
 ├── controllers/           # Xử lý logic
-│   ├── authController.js
-│   ├── fileController.js
-│   └── userController.js
+│   ├── auth.js           # Xử lý đăng ký, đăng nhập
+│   └── files.js          # Xử lý upload và quản lý file
 ├── middleware/            # Middleware
-│   ├── auth.js
-│   ├── errorHandler.js
-│   └── upload.js
+│   ├── auth.js           # Xác thực JWT
+│   ├── error.js          # Xử lý lỗi
+│   └── upload.js         # Xử lý upload file
 ├── models/                # Mô hình dữ liệu
-│   ├── File.js
-│   └── User.js
+│   ├── File.js           # Model File
+│   └── User.js           # Model User
 ├── routes/                # Định tuyến API
-│   ├── authRoutes.js
-│   ├── fileRoutes.js
-│   └── userRoutes.js
-├── utils/                 # Tiện ích
-│   ├── email.js
-│   └── validators.js
-├── uploads/               # Thư mục lưu file
+│   ├── auth.js           # Route xác thực
+│   └── files.js          # Route quản lý file
 ├── scripts/               # Scripts
-│   ├── initDb.js
-│   └── sampleData.js
-├── app.js                 # Cấu hình Express
-└── server.js              # Entry point
+│   ├── initDb.js         # Khởi tạo database
+│   └── seedData.js       # Dữ liệu mẫu
+└── index.js              # Entry point
 ```
 
 ## API Endpoints
@@ -160,11 +140,6 @@ server/
 - `POST /api/auth/refresh-token` - Làm mới token
 - `POST /api/auth/forgot-password` - Quên mật khẩu
 - `POST /api/auth/reset-password` - Đặt lại mật khẩu
-
-### Users
-- `GET /api/users/me` - Lấy thông tin người dùng hiện tại
-- `PUT /api/users/me` - Cập nhật thông tin người dùng
-- `PUT /api/users/change-password` - Thay đổi mật khẩu
 
 ### Files
 - `POST /api/files` - Tải lên file mới

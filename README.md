@@ -44,8 +44,8 @@
 
 1. Clone repository:
    ```
-   git clone <repository-url>
-   cd file-sharing-app
+   git clone https://github.com/kieejt/file-sharing-web.git
+   cd file-sharing-web
    ```
 
 2. Cài đặt dependencies cho cả client và server:
@@ -89,8 +89,8 @@
 
 1. Clone repository:
    ```
-   git clone <repository-url>
-   cd file-sharing-app
+   git clone https://github.com/kieejt/file-sharing-web.git
+   cd file-sharing-web
    ```
 
 2. Tạo file `.env` từ file `.env.docker`:
@@ -110,37 +110,29 @@
    docker-compose down
    ```
 
-### Khắc phục sự cố Docker
-
-Nếu bạn gặp lỗi khi chạy Docker Compose, hãy thử các bước sau:
-
-1. Đảm bảo Docker Desktop đã được cài đặt và đang chạy
-2. Kiểm tra lỗi trong Docker Desktop logs
-3. Khởi động lại Docker Desktop
-4. Nếu vẫn gặp vấn đề, hãy sử dụng phương pháp cài đặt thủ công
-
 ## Cấu trúc dự án
 
 ```
-file-sharing-app/
+file-sharing-web/
 ├── client/                # Frontend React
 │   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── context/
-│   │   ├── pages/
-│   │   ├── utils/
+│   │   ├── components/    # Các component React
+│   │   ├── context/      # Context API
+│   │   ├── pages/        # Các trang
+│   │   ├── utils/        # Tiện ích
 │   │   └── ...
 │   └── ...
 ├── server/                # Backend Node.js/Express
-│   ├── config/
-│   ├── controllers/
-│   ├── middleware/
-│   ├── models/
-│   ├── routes/
-│   ├── utils/
-│   ├── uploads/
+│   ├── config/           # Cấu hình
+│   ├── controllers/      # Xử lý logic
+│   ├── middleware/       # Middleware
+│   ├── models/           # Mô hình dữ liệu
+│   ├── routes/           # Định tuyến API
+│   ├── scripts/          # Scripts
 │   └── ...
+├── uploads/              # Thư mục lưu file
+├── docker-compose.yml    # Cấu hình Docker
 └── ...
 ```
 
@@ -162,6 +154,6 @@ Dự án này được cấp phép theo giấy phép MIT - xem file [LICENSE](LI
 
 ## Liên hệ
 
-Tên của bạn - email@example.com
+Kieejt - [kieejt@gmail.com](mailto:kieejt@gmail.com)
 
-Link dự án: [https://github.com/yourusername/file-sharing-app](https://github.com/yourusername/file-sharing-app) 
+Link dự án: [https://github.com/kieejt/file-sharing-web](https://github.com/kieejt/file-sharing-web) 
