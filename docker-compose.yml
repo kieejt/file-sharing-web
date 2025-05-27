@@ -1,0 +1,47 @@
+services:
+  # Backend service
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: fileshare-server
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - ./server/uploads:/app/uploads
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@host.docker.internal:27017/fileshare?authSource=admin
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRE=${JWT_EXPIRE}
+      - FILE_UPLOAD_PATH=./uploads
+      - MAX_FILE_SIZE=10000000
+    networks:
+      - fileshare-network
+
+  # Frontend service
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: fileshare-client
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+    depends_on:
+      - server
+    networks:
+      - fileshare-network
+
+networks:
+  fileshare-network:
+    driver: bridge
