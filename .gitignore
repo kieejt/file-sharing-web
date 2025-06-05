@@ -24,8 +24,8 @@ logs
 *.log
 
 # Uploaded files
-/server/uploads/*
-!/server/uploads/.gitkeep
+/uploads/*
+!/uploads/.gitkeep
 
 # Database
 *.sqlite
