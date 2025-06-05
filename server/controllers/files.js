@@ -105,9 +105,23 @@ exports.getFiles = async (req, res, next) => {
       userId: req.user.id,
       ...searchCondition
     })
+      .populate('userId', 'name email')
       .sort({ createdAt: -1 })
       .limit(limit)
       .skip(startIndex);
+
+    // Định dạng dữ liệu trả về
+    const formattedFiles = files.map(file => {
+      const fileObj = file.toObject();
+      return {
+        ...fileObj,
+        user: fileObj.userId._id,
+        uploader: {
+          name: fileObj.userId.name || 'Người dùng không xác định',
+          email: fileObj.userId.email
+        }
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -118,7 +132,7 @@ exports.getFiles = async (req, res, next) => {
         limit,
         totalPages: Math.ceil(total / limit)
       },
-      data: files
+      data: formattedFiles
     });
   } catch (err) {
     next(err);
