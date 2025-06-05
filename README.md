@@ -56,8 +56,12 @@
    cd ../client
    npm install
    ```
+3. Cấu hình MongoDB:
+   - Khởi động MongoDB Service
+   - Kết nối tới MongoDB local với connection string: `mongodb://localhost:27017`
+   - Tạo database mới với tên "fileshare"
 
-3. Tạo file `.env` cho cả client và server:
+4. Tạo file `.env` cho cả client và server:
    ```
    # Tạo .env cho server
    cd ../server
@@ -68,7 +72,7 @@
    cp .env.example .env
    ```
 
-4. Chạy ứng dụng:
+5. Chạy ứng dụng:
    ```
    # Terminal 1: Chạy server
    cd server
@@ -79,7 +83,7 @@
    npm start
    ```
 
-5. Truy cập ứng dụng tại `http://localhost:3000`
+6. Truy cập ứng dụng tại `http://localhost:3000`
 
 ### Cài đặt với Docker
 
