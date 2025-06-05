@@ -169,7 +169,7 @@ const FileDetails = () => {
       
       // Đảm bảo tên file hợp lệ
       const fileName = file.originalName || `file_${fileId}.txt`;
-      link.setAttribute('download', fileName);
+      link.setAttribute('download', file.name);
       
       document.body.appendChild(link);
       link.click();

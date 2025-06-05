@@ -206,7 +206,7 @@ const FileCard = ({ file, onDelete, onUpdate }) => {
           </button>
           
           <div className="flex space-x-2">
-            {String(file.userId) === String(file.currentUserId || '') && (
+            
               <button
                 onClick={downloadFile}
                 className="text-xs flex items-center text-gray-700 hover:text-primary-600"
@@ -226,9 +226,9 @@ const FileCard = ({ file, onDelete, onUpdate }) => {
                   </>
                 )}
               </button>
-            )}
             
-            {String(file.userId) === String(file.currentUserId || '') && (
+            
+            
               <button
                 onClick={deleteFile}
                 className="text-xs flex items-center text-red-600 hover:text-red-800"
@@ -238,7 +238,7 @@ const FileCard = ({ file, onDelete, onUpdate }) => {
                 </svg>
                 Xóa
               </button>
-            )}
+            
           </div>
         </div>
       </div>
