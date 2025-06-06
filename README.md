@@ -51,7 +51,6 @@ Các tính năng chính của ứng dụng mobile bao gồm:
 - JWT Authentication
 - Multer (xử lý upload file)
 - Bcrypt (mã hóa mật khẩu)
-- Nodemailer (gửi email)
 
 ## Cài đặt và chạy
 
