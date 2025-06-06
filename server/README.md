@@ -10,7 +10,6 @@ Backend cho ứng dụng chia sẻ file.
 - JWT Authentication
 - Multer (xử lý upload file)
 - Bcrypt (mã hóa mật khẩu)
-- Nodemailer (gửi email)
 - Docker (tùy chọn)
 
 ## Yêu cầu hệ thống
@@ -156,6 +155,5 @@ server/
 - Tải lên và quản lý file
 - Chia sẻ file với người dùng khác
 - Giới hạn kích thước và loại file
-- Gửi email thông báo
 - Xử lý lỗi và validation
 - Hỗ trợ tên file tiếng Việt 
