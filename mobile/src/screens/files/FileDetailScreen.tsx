@@ -445,6 +445,7 @@ const styles = StyleSheet.create({
   },
   button: {
     margin: 4,
+    backgroundColor: '#1976D2',
   },
   deleteButton: {
     backgroundColor: 'red',

@@ -165,6 +165,7 @@ const styles = StyleSheet.create({
   },
   uploadButton: {
     marginBottom: 8,
+    backgroundColor: '#1976D2',
   },
   error: {
     color: 'red',

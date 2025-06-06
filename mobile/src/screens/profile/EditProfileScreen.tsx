@@ -93,6 +93,7 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 8,
+    backgroundColor: '#1976D2',
   },
   error: {
     color: 'red',

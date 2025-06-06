@@ -93,6 +93,7 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 10,
+    backgroundColor: '#1976D2',
   },
   linkButton: {
     marginTop: 10,

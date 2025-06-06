@@ -162,6 +162,7 @@ export const SharedFileScreen = () => {
             onPress={handleDownload}
             loading={downloading}
             disabled={downloading}
+            style={styles.button}
           >
             Download
           </Button>
@@ -205,6 +206,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+  },
+  button: {
+    backgroundColor: '#1976D2',
   },
 });
 

@@ -60,7 +60,7 @@ export const SharedFileInputScreen = () => {
         
         <Card.Actions style={styles.actions}>
           <Button
-            mode="outlined"
+            mode="contained"
             onPress={handlePaste}
             style={styles.button}
           >
@@ -109,5 +109,6 @@ const styles = StyleSheet.create({
   },
   button: {
     marginLeft: 8,
+    backgroundColor: '#1976D2',
   },
 }); 

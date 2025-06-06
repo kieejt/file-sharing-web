@@ -67,7 +67,7 @@ export const ProfileScreen = () => {
         </Button>
 
         <Button
-          mode="outlined"
+          mode="contained"
           onPress={handleLogout}
           loading={loading}
           style={styles.button}
@@ -117,6 +117,7 @@ const styles = StyleSheet.create({
   },
   button: {
     marginBottom: 8,
+    backgroundColor: '#1976D2',
   },
 });
 
