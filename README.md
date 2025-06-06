@@ -191,10 +191,6 @@ file-sharing-web/
 
 Xem chi tiết API trong [server/README.md](server/README.md).
 
-## Giấy phép
-
-Dự án này được cấp phép theo giấy phép MIT - xem file [LICENSE](LICENSE) để biết thêm chi tiết.
-
 ## Liên hệ
 
 Link dự án: [https://github.com/kieejt/file-sharing-web](https://github.com/kieejt/file-sharing-web) 
