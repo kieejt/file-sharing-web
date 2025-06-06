@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Share, Alert, Image, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, Share, Alert, Image, Dimensions, Platform, Linking } from 'react-native';
 import { Text, Card, Button, ActivityIndicator, IconButton, TextInput, Portal, Dialog } from 'react-native-paper';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { fileAPI } from '../../services/api';
 import { RootStackParamList, NavigationProp } from '../../types/navigation';
 import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from 'expo-document-picker';
 
 // Lấy base URL từ biến môi trường hoặc sử dụng giá trị mặc định
 const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:5000';
@@ -54,6 +57,11 @@ const convertFileResponse = (response: FileResponse): File => {
 const isImageFile = (mimeType?: string): boolean => {
   if (!mimeType) return false;
   return mimeType.startsWith('image/');
+};
+
+const isMediaFile = (mimeType?: string): boolean => {
+  if (!mimeType) return false;
+  return mimeType.startsWith('image/') || mimeType.startsWith('video/');
 };
 
 const getImagePreviewUrl = (fileId: string): string => {
@@ -155,42 +163,113 @@ export const FileDetailScreen = () => {
 
     try {
       setDownloading(true);
-      console.log('Attempting to download file:', file.name, file._id);
-      
-      // Tạo đường dẫn file trong thư mục cache
-      const fileUri = FileSystem.cacheDirectory + file.originalName;
-      
-      // Tải file xuống
+      console.log('Bắt đầu tải xuống file:', file.originalName, 'ID:', file._id, 'Type:', file.mimeType);
+
+      // Kiểm tra và yêu cầu quyền truy cập Photo Library nếu là file media
+      if (Platform.OS === 'ios' && isMediaFile(file.mimeType)) {
+        console.log('Đang kiểm tra quyền truy cập Photo Library...');
+        
+        const { status: photoStatus } = await MediaLibrary.requestPermissionsAsync();
+        console.log('Trạng thái quyền Photo Library:', photoStatus);
+        
+        if (photoStatus !== 'granted') {
+          Alert.alert(
+            'Cần quyền truy cập',
+            'Ứng dụng cần quyền truy cập vào Bộ sưu tập để lưu ảnh và video. Vui lòng cấp quyền trong Cài đặt.',
+            [
+              { text: 'Đóng', style: 'cancel' },
+              { text: 'Mở Cài đặt', onPress: () => Linking.openSettings() }
+            ]
+          );
+          return;
+        }
+      }
+
+      // Lấy token từ AsyncStorage
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('Không tìm thấy token xác thực');
+      }
+
+      // Tạo đường dẫn tạm thời cho file
+      const fileUri = `${FileSystem.cacheDirectory}${file.originalName}`;
+      console.log('Đường dẫn file tạm:', fileUri);
+
+      // Tải file từ server
+      const downloadUrl = `${API_URL}/files/${file._id}/download`;
+      console.log('URL tải xuống:', downloadUrl);
+
       const downloadResult = await FileSystem.downloadAsync(
-        `${API_URL}/files/${file._id}/download`,
-        fileUri
+        downloadUrl,
+        fileUri,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      console.log('Download result:', downloadResult);
+      console.log('Kết quả tải xuống:', downloadResult);
 
       if (downloadResult.status === 200) {
-        // Kiểm tra xem file có tồn tại không
+        // Kiểm tra file đã tải xuống
         const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        console.log('Thông tin file sau khi tải:', fileInfo);
+
         if (!fileInfo.exists) {
-          throw new Error('File not found after download');
+          throw new Error('Không tìm thấy file sau khi tải xuống');
         }
 
-        // Sử dụng Share để người dùng lưu hoặc mở file
-        const shareResult = await Share.share({
-          url: Platform.OS === 'ios' ? fileUri : `file://${fileUri}`,
-          title: file.originalName,
-          message: `Here's the file: ${file.originalName}`,
-        });
+        // Xử lý file media
+        if (isMediaFile(file.mimeType)) {
+          console.log('Đang xử lý file media');
+          try {
+            // Lưu vào thư viện
+            const asset = await MediaLibrary.createAssetAsync(fileUri);
+            console.log('Đã tạo asset:', asset);
 
-        if (shareResult.action === Share.sharedAction) {
-          Alert.alert('Success', 'File shared successfully');
+            // Kiểm tra album đã tồn tại
+            const albums = await MediaLibrary.getAlbumsAsync();
+            console.log('Danh sách album:', albums);
+            
+            let album = albums.find(a => a.title === 'File Sharing');
+            
+            if (!album) {
+              console.log('Tạo album mới');
+              album = await MediaLibrary.createAlbumAsync('File Sharing', asset, false);
+            } else {
+              console.log('Thêm vào album hiện có');
+              await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+            }
+
+            Alert.alert('Thành công', 'File đã được lưu vào thư viện');
+          } catch (error: any) {
+            console.error('Lỗi khi lưu vào thư viện:', error);
+            Alert.alert('Lỗi', 'Không thể lưu file vào thư viện: ' + (error?.message || 'Lỗi không xác định'));
+          }
+        } else {
+          // Nếu không phải file media, sử dụng Share để người dùng lưu hoặc mở file
+          console.log('Đang chia sẻ file thông thường');
+          const fileUrl = Platform.OS === 'ios' ? `file://${fileUri}` : fileUri;
+          console.log('URL chia sẻ:', fileUrl);
+
+          const shareResult = await Share.share({
+            url: fileUrl,
+            title: file.originalName,
+          });
+
+          console.log('Kết quả chia sẻ:', shareResult);
+
+          if (shareResult.action === Share.sharedAction) {
+            Alert.alert('Thành công', 'File đã được chia sẻ thành công');
+          }
         }
       } else {
-        throw new Error(`Download failed with status: ${downloadResult.status}`);
+        throw new Error(`Tải xuống thất bại với mã lỗi: ${downloadResult.status}`);
       }
-    } catch (error) {
-      console.error('Download error:', error);
-      Alert.alert('Error', 'Failed to download file. Please try again.');
+    } catch (error: any) {
+      console.error('Lỗi tải xuống:', error);
+      Alert.alert('Lỗi', 'Không thể tải xuống file: ' + (error?.message || 'Lỗi không xác định'));
     } finally {
       setDownloading(false);
     }
