@@ -32,7 +32,7 @@ const Footer = () => {
         </div>
         
         <div className="mt-6 border-t border-gray-200 pt-6 text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} FileShare. Tất cả các quyền được bảo lưu.
+          &copy; {new Date().getFullYear()} FileShare Web
         </div>
       </div>
     </footer>
