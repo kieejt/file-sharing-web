@@ -113,7 +113,9 @@ export const FileDetailScreen = () => {
           name: ownerName
         }
       });
-      setNewFileName(fileData.name);
+      // Lấy phần tên trước dấu chấm
+      const nameWithoutExtension = fileData.name.split('.').slice(0, -1).join('.');
+      setNewFileName(nameWithoutExtension);
     } catch (error) {
       console.error('Error loading file:', error);
       Alert.alert('Error', 'Failed to load file details');
@@ -128,9 +130,14 @@ export const FileDetailScreen = () => {
       return;
     }
 
+    // Lấy phần đuôi của tên file gốc
+    const originalExtension = file.originalName.split('.').pop();
+    // Tạo tên file mới bằng cách thêm phần đuôi vào
+    const newFullFileName = `${newFileName.trim()}.${originalExtension}`;
+
     try {
       setRenaming(true);
-      await fileAPI.updateFile(file._id, { name: newFileName.trim() });
+      await fileAPI.updateFile(file._id, { name: newFullFileName });
       await loadFileDetails();
       setRenameDialogVisible(false);
       Alert.alert('Success', 'File renamed successfully');

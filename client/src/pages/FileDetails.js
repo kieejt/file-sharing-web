@@ -223,7 +223,9 @@ const FileDetails = () => {
   // Hàm để bắt đầu đổi tên file
   const startRenameFile = () => {
     if (!file) return;
-    setNewFileName(file.name || file.originalName);
+    // Lấy phần tên trước dấu chấm
+    const nameWithoutExtension = file.name.split('.').slice(0, -1).join('.');
+    setNewFileName(nameWithoutExtension);
     setIsRenaming(true);
   };
 
@@ -236,25 +238,25 @@ const FileDetails = () => {
   const updateFileName = async (e) => {
     e.preventDefault();
     
-    // if (!file || String(file.userId) !== String(user?.id || '')) {
-    //   toast.error('Bạn không có quyền cập nhật file này');
-    //   return;
-    // }
-    
     if (!newFileName.trim()) {
       toast.error('Tên file không được để trống');
       return;
     }
+
+    // Lấy phần đuôi của tên file gốc
+    const originalExtension = file.originalName.split('.').pop();
+    // Tạo tên file mới bằng cách thêm phần đuôi vào
+    const newFullFileName = `${newFileName.trim()}.${originalExtension}`;
     
     try {
       setUpdating(true);
       
-      const response = await fileAPI.updateFile(fileId, { name: newFileName });
+      const response = await fileAPI.updateFile(fileId, { name: newFullFileName });
       
       if (response.data) {
         setFile({
           ...file,
-          name: newFileName
+          name: newFullFileName
         });
         
         toast.success('Đổi tên file thành công!');

@@ -6,6 +6,7 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { AuthProvider } from './src/context/AuthContext';
 import { RootStackParamList, BottomTabParamList } from './src/types/navigation';
+import { Platform } from 'react-native';
 
 // Create navigation stacks
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -29,9 +30,9 @@ const MainTabs = () => (
       tabBarActiveTintColor: '#1976D2',
       tabBarInactiveTintColor: '#666',
       tabBarStyle: {
-        paddingBottom: 5,
         paddingTop: 5,
         height: 60,
+        paddingBottom: Platform.OS === 'ios' ? 25 : 5,
       },
     }}
   >
