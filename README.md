@@ -1,4 +1,4 @@
-# FileShare - Ứng dụng chia sẻ file
+# FileShare - Ứng dụng chia sẻ tài liệu
 
 Ứng dụng web cho phép người dùng tải lên, quản lý và chia sẻ file một cách dễ dàng và an toàn.
 
