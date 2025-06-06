@@ -191,14 +191,6 @@ file-sharing-web/
 
 Xem chi tiết API trong [server/README.md](server/README.md).
 
-## Đóng góp
-
-Xem hướng dẫn đóng góp trong [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Changelog
-
-Xem lịch sử thay đổi trong [CHANGELOG.md](CHANGELOG.md).
-
 ## Giấy phép
 
 Dự án này được cấp phép theo giấy phép MIT - xem file [LICENSE](LICENSE) để biết thêm chi tiết.
