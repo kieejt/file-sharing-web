@@ -19,7 +19,7 @@ export const EditProfileScreen = () => {
     return emailRegex.test(email);
   };
 
-  const handleUpdate = async () => {
+  const handleUpdateProfile = async () => {
     if (!name.trim()) {
       setError('Tên không được để trống');
       return;
@@ -49,8 +49,10 @@ export const EditProfileScreen = () => {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.title}>Chỉnh sửa hồ sơ</Text>
+
       <TextInput
-        label="Tên"
+        label="Họ tên"
         value={name}
         onChangeText={setName}
         style={styles.input}
@@ -60,8 +62,8 @@ export const EditProfileScreen = () => {
         label="Email"
         value={email}
         onChangeText={setEmail}
-        keyboardType="email-address"
         autoCapitalize="none"
+        keyboardType="email-address"
         style={styles.input}
       />
 
@@ -69,12 +71,12 @@ export const EditProfileScreen = () => {
 
       <Button
         mode="contained"
-        onPress={handleUpdate}
+        onPress={handleUpdateProfile}
         loading={loading}
         disabled={loading}
         style={styles.button}
       >
-        Cập nhật thông tin
+        Cập nhật
       </Button>
     </View>
   );
@@ -94,6 +96,12 @@ const styles = StyleSheet.create({
   },
   error: {
     color: 'red',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
   },

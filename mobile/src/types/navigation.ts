@@ -10,6 +10,7 @@ export type RootStackParamList = {
   FileUpload: undefined;
   Profile: undefined;
   SharedFile: { shareId: string };
+  SharedFileInput: undefined;
   EditProfile: undefined;
   ChangePassword: undefined;
 };
@@ -17,6 +18,7 @@ export type RootStackParamList = {
 export type BottomTabParamList = {
   Home: undefined;
   Upload: undefined;
+  SharedFileInput: undefined;
   Profile: undefined;
 };
 

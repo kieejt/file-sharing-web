@@ -17,7 +17,7 @@ export const RegisterScreen = () => {
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      setError('Please fill in all fields');
+      setError('Vui lòng điền đầy đủ thông tin');
       return;
     }
 
@@ -27,7 +27,7 @@ export const RegisterScreen = () => {
       await register(name, email, password);
       navigation.navigate('Main');
     } catch (error: any) {
-      setError(error.response?.data?.message || 'An error occurred during registration');
+      setError(error.response?.data?.message || 'Đã xảy ra lỗi khi đăng ký');
     } finally {
       setLoading(false);
     }
@@ -35,10 +35,10 @@ export const RegisterScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
+      <Text style={styles.title}>Tạo tài khoản</Text>
 
       <TextInput
-        label="Name"
+        label="Họ tên"
         value={name}
         onChangeText={setName}
         style={styles.input}
@@ -54,7 +54,7 @@ export const RegisterScreen = () => {
       />
 
       <TextInput
-        label="Password"
+        label="Mật khẩu"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -70,7 +70,7 @@ export const RegisterScreen = () => {
         disabled={loading}
         style={styles.button}
       >
-        Register
+        Đăng ký
       </Button>
 
       <Button
@@ -78,7 +78,7 @@ export const RegisterScreen = () => {
         onPress={() => navigation.navigate('Login')}
         style={styles.linkButton}
       >
-        Already have an account? Login
+        Đã có tài khoản? Đăng nhập
       </Button>
     </View>
   );

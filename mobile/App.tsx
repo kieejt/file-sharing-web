@@ -19,6 +19,7 @@ import {FileListScreen} from './src/screens/files/FileListScreen';
 import {FileDetailScreen} from './src/screens/files/FileDetailScreen';
 import {FileUploadScreen} from './src/screens/files/FileUploadScreen';
 import {SharedFileScreen} from './src/screens/files/SharedFileScreen';
+import {SharedFileInputScreen} from './src/screens/files/SharedFileInputScreen';
 import {ProfileScreen} from './src/screens/profile/ProfileScreen'
 import {EditProfileScreen} from './src/screens/profile/EditProfileScreen';
 import {ChangePasswordScreen} from './src/screens/profile/ChangePasswordScreen';
@@ -53,6 +54,16 @@ const MainTabs = () => (
         tabBarIcon: ({ color, size }) => (
           <MaterialCommunityIcons name="upload" size={size} color={color} />
         ),
+      }}
+    />
+    <Tab.Screen
+      name="SharedFileInput"
+      component={SharedFileInputScreen}
+      options={{
+        tabBarIcon: ({ color, size }) => (
+          <MaterialCommunityIcons name="link-variant" size={size} color={color} />
+        ),
+        title: 'Open Shared',
       }}
     />
     <Tab.Screen

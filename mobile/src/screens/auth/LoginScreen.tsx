@@ -16,7 +16,7 @@ export const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError('Vui lòng điền đầy đủ thông tin');
       return;
     }
 
@@ -26,7 +26,7 @@ export const LoginScreen = () => {
       await login(email, password);
       navigation.navigate('Main');
     } catch (error: any) {
-      setError(error.response?.data?.message || 'An error occurred during login');
+      setError(error.response?.data?.message || 'Đã xảy ra lỗi khi đăng nhập');
     } finally {
       setLoading(false);
     }
@@ -34,7 +34,7 @@ export const LoginScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back</Text>
+      <Text style={styles.title}>Chào mừng trở lại</Text>
       
       <TextInput
         label="Email"
@@ -46,7 +46,7 @@ export const LoginScreen = () => {
       />
 
       <TextInput
-        label="Password"
+        label="Mật khẩu"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -62,7 +62,7 @@ export const LoginScreen = () => {
         disabled={loading}
         style={styles.button}
       >
-        Login
+        Đăng nhập
       </Button>
 
       <Button
@@ -70,7 +70,7 @@ export const LoginScreen = () => {
         onPress={() => navigation.navigate('Register')}
         style={styles.linkButton}
       >
-        Don't have an account? Register
+        Chưa có tài khoản? Đăng ký ngay
       </Button>
     </View>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -26,8 +26,10 @@ const utf8ToLatin1Bytes = (str: string): string => {
 
 export const FileUploadScreen = () => {
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
 
-  const pickImage = async () => {
+  const handlePickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -44,7 +46,7 @@ export const FileUploadScreen = () => {
     }
   };
 
-  const pickDocument = async () => {
+  const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
@@ -101,30 +103,47 @@ export const FileUploadScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Upload Files</Text>
-      <View style={styles.buttonContainer}>
+      <Text style={styles.title}>Tải lên tệp</Text>
+
+      <View style={styles.uploadOptions}>
         <Button
           mode="contained"
-          onPress={pickImage}
-          loading={uploading}
-          disabled={uploading}
-          style={styles.button}
+          onPress={handlePickImage}
+          style={styles.uploadButton}
           icon="image"
         >
-          Pick Image
+          Chọn ảnh
         </Button>
 
         <Button
           mode="contained"
-          onPress={pickDocument}
-          loading={uploading}
-          disabled={uploading}
-          style={styles.button}
-          icon="file"
+          onPress={handlePickDocument}
+          style={styles.uploadButton}
+          icon="file-document"
         >
-          Pick Document
+          Chọn tài liệu
         </Button>
       </View>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {uploading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0000ff" />
+          <Text style={styles.loadingText}>Đang tải lên...</Text>
+        </View>
+      )}
+
+      {uploadedFiles.length > 0 && (
+        <View style={styles.uploadedFiles}>
+          <Text style={styles.uploadedFilesTitle}>Tệp đã tải lên:</Text>
+          {uploadedFiles.map((file, index) => (
+            <Text key={index} style={styles.uploadedFile}>
+              {file.name}
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -141,10 +160,33 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
-  buttonContainer: {
+  uploadOptions: {
     gap: 16,
   },
-  button: {
+  uploadButton: {
+    marginBottom: 8,
+  },
+  error: {
+    color: 'red',
+    marginBottom: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+  },
+  uploadedFiles: {
+    marginTop: 16,
+  },
+  uploadedFilesTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  uploadedFile: {
     marginBottom: 8,
   },
 });

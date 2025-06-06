@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Share, Alert, Image, Dimensions } from 'react-native';
+import { View, StyleSheet, Share, Alert, Image, Dimensions, Platform } from 'react-native';
 import { Text, Card, Button, ActivityIndicator, IconButton, TextInput, Portal, Dialog } from 'react-native-paper';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { fileAPI } from '../../services/api';
@@ -72,11 +72,13 @@ export const FileDetailScreen = () => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [renameDialogVisible, setRenameDialogVisible] = useState(false);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const route = useRoute<FileDetailRouteProp>();
   const navigation = useNavigation<NavigationProp>();
@@ -118,7 +120,7 @@ export const FileDetailScreen = () => {
       setNewFileName(nameWithoutExtension);
     } catch (error) {
       console.error('Error loading file:', error);
-      Alert.alert('Error', 'Failed to load file details');
+      setError('Failed to load file details');
     } finally {
       setLoading(false);
     }
@@ -126,7 +128,7 @@ export const FileDetailScreen = () => {
 
   const handleRename = async () => {
     if (!file || !newFileName.trim()) {
-      Alert.alert('Error', 'Please enter a valid file name');
+      Alert.alert('Lỗi', 'Vui lòng nhập tên file hợp lệ');
       return;
     }
 
@@ -139,10 +141,10 @@ export const FileDetailScreen = () => {
       setRenaming(true);
       await fileAPI.updateFile(file._id, { name: newFullFileName });
       await loadFileDetails();
+      Alert.alert('Thành công', 'Đổi tên file thành công');
       setRenameDialogVisible(false);
-      Alert.alert('Success', 'File renamed successfully');
     } catch (error) {
-      Alert.alert('Error', 'Failed to rename file');
+      Alert.alert('Lỗi', 'Không thể đổi tên file');
     } finally {
       setRenaming(false);
     }
@@ -155,30 +157,40 @@ export const FileDetailScreen = () => {
       setDownloading(true);
       console.log('Attempting to download file:', file.name, file._id);
       
-      // Tải file xuống thư mục cache tạm thời
+      // Tạo đường dẫn file trong thư mục cache
+      const fileUri = FileSystem.cacheDirectory + file.originalName;
+      
+      // Tải file xuống
       const downloadResult = await FileSystem.downloadAsync(
         `${API_URL}/files/${file._id}/download`,
-        FileSystem.cacheDirectory + file.originalName
+        fileUri
       );
 
       console.log('Download result:', downloadResult);
 
       if (downloadResult.status === 200) {
-        console.log('Download successful, sharing file:', downloadResult.uri);
+        // Kiểm tra xem file có tồn tại không
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        if (!fileInfo.exists) {
+          throw new Error('File not found after download');
+        }
+
         // Sử dụng Share để người dùng lưu hoặc mở file
-        await Share.share({
-          url: downloadResult.uri,
-          title: `Share ${file.originalName}`,
+        const shareResult = await Share.share({
+          url: Platform.OS === 'ios' ? fileUri : `file://${fileUri}`,
+          title: file.originalName,
+          message: `Here's the file: ${file.originalName}`,
         });
-        Alert.alert('Success', 'File downloaded and ready to share/save.');
+
+        if (shareResult.action === Share.sharedAction) {
+          Alert.alert('Success', 'File shared successfully');
+        }
       } else {
-        Alert.alert('Error', `Failed to download file. Status: ${downloadResult.status}`);
-        console.error('Download failed with status:', downloadResult.status);
+        throw new Error(`Download failed with status: ${downloadResult.status}`);
       }
-      
     } catch (error) {
       console.error('Download error:', error);
-      Alert.alert('Error', 'Failed to download file');
+      Alert.alert('Error', 'Failed to download file. Please try again.');
     } finally {
       setDownloading(false);
     }
@@ -188,23 +200,24 @@ export const FileDetailScreen = () => {
     if (!file) return;
 
     try {
+      setSharing(true);
       console.log('File object before sharing:', file); // Debug log
       if (!file.shareId) {
-        Alert.alert('Error', 'Share ID not available');
+        Alert.alert('Lỗi', 'Share ID not available');
         return;
       }
       // Sử dụng URL của ứng dụng web để chia sẻ
       const webAppUrl = 'http://localhost:3000'; // URL cơ sở của ứng dụng web
       const shareUrl = `${webAppUrl}/share/${file.shareId}`;
-      const shareMessage = `Check out this file: ${file.name}\n${shareUrl}`; // Thông báo bao gồm tên file và URL
       
       const result = await Share.share({
-        message: shareMessage,
         url: shareUrl
       });
     } catch (error) {
       console.error('Share error:', error);
-      Alert.alert('Error', 'Failed to share file');
+      Alert.alert('Lỗi', 'Không thể chia sẻ file');
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -246,7 +259,7 @@ export const FileDetailScreen = () => {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
   }
@@ -254,7 +267,7 @@ export const FileDetailScreen = () => {
   if (!file) {
     return (
       <View style={styles.centerContainer}>
-        <Text>File not found</Text>
+        <Text style={styles.error}>{error}</Text>
       </View>
     );
   }
@@ -264,23 +277,23 @@ export const FileDetailScreen = () => {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.title}>Chi tiết tệp</Text>
+
       <Portal>
         <Dialog visible={renameDialogVisible} onDismiss={() => setRenameDialogVisible(false)}>
-          <Dialog.Title>Rename File</Dialog.Title>
+          <Dialog.Title>Đổi tên file</Dialog.Title>
           <Dialog.Content>
             <TextInput
-              label="New File Name"
+              label="Tên file mới"
               value={newFileName}
               onChangeText={setNewFileName}
-              disabled={renaming}
+              style={styles.input}
             />
           </Dialog.Content>
           <Dialog.Actions>
-            <Button mode="text" onPress={() => setRenameDialogVisible(false)}>
-              Cancel
-            </Button>
-            <Button mode="text" onPress={handleRename} loading={renaming} disabled={renaming}>
-              Rename
+            <Button onPress={() => setRenameDialogVisible(false)}>Hủy</Button>
+            <Button onPress={handleRename} loading={renaming} disabled={renaming}>
+              Đổi tên
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -321,9 +334,11 @@ export const FileDetailScreen = () => {
         {renderFilePreview()}
 
         <Card.Content>
-          <Text>Tên gốc: {file.originalName}</Text>
-          <Text>Kích thước: {formatFileSize(file.size)}</Text>
-          <Text>Loại file: {file.mimeType}</Text>
+          <View style={styles.fileInfo}>
+            <Text style={styles.fileName}>{file.originalName}</Text>
+            <Text style={styles.fileSize}>{formatFileSize(file.size)}</Text>
+            <Text style={styles.fileType}>{file.mimeType}</Text>
+          </View>
           <Text>Ngày tải lên: {uploadDate}</Text>
           {file.description && (
             <Text>{file.description}</Text>
@@ -331,28 +346,36 @@ export const FileDetailScreen = () => {
         </Card.Content>
 
         <Card.Actions style={styles.actionButtons}>
-          <Button
-            mode="outlined"
-            onPress={() => setRenameDialogVisible(true)}
-            style={styles.actionButton}
-          >
-            Rename
-          </Button>
-          <Button
-            mode="outlined"
-            onPress={handleShare}
-            style={styles.actionButton}
-          >
-            Share
-          </Button>
-          <Button
-            mode="outlined"
-            onPress={() => setDeleteDialogVisible(true)}
-            style={styles.actionButton}
-            textColor="red"
-          >
-            Delete
-          </Button>
+          <View style={styles.actions}>
+            <Button
+              mode="contained"
+              onPress={handleShare}
+              loading={sharing}
+              disabled={sharing}
+              style={styles.button}
+              icon="share"
+            >
+              Chia sẻ
+            </Button>
+
+            <Button
+              mode="contained"
+              onPress={() => setRenameDialogVisible(true)}
+              style={styles.button}
+              icon="pencil"
+            >
+              Đổi tên
+            </Button>
+
+            <Button
+              mode="contained"
+              onPress={() => setDeleteDialogVisible(true)}
+              style={[styles.button, styles.deleteButton]}
+              icon="delete"
+            >
+              Xóa
+            </Button>
+          </View>
         </Card.Actions>
       </Card>
     </View>
@@ -394,6 +417,45 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width - 50,
     height: 300,
     borderRadius: 8,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  fileInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fileName: {
+    fontWeight: 'bold',
+  },
+  fileSize: {
+    fontWeight: 'bold',
+  },
+  fileType: {
+    fontWeight: 'bold',
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  button: {
+    margin: 4,
+  },
+  deleteButton: {
+    backgroundColor: 'red',
+  },
+  error: {
+    color: 'red',
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  input: {
+    marginBottom: 10,
   },
 });
 

@@ -44,8 +44,10 @@ export const ChangePasswordScreen = () => {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.title}>Đổi mật khẩu</Text>
+
       <TextInput
-        label="Current Password"
+        label="Mật khẩu hiện tại"
         value={currentPassword}
         onChangeText={setCurrentPassword}
         secureTextEntry
@@ -53,7 +55,7 @@ export const ChangePasswordScreen = () => {
       />
 
       <TextInput
-        label="New Password"
+        label="Mật khẩu mới"
         value={newPassword}
         onChangeText={setNewPassword}
         secureTextEntry
@@ -61,7 +63,7 @@ export const ChangePasswordScreen = () => {
       />
 
       <TextInput
-        label="Confirm New Password"
+        label="Xác nhận mật khẩu mới"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
@@ -77,7 +79,7 @@ export const ChangePasswordScreen = () => {
         disabled={loading}
         style={styles.button}
       >
-        Change Password
+        Đổi mật khẩu
       </Button>
     </View>
   );
@@ -97,6 +99,12 @@ const styles = StyleSheet.create({
   },
   error: {
     color: 'red',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
   },

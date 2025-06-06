@@ -339,7 +339,8 @@ exports.downloadFile = async (req, res) => {
 // @access  Public
 exports.getSharedFile = async (req, res, next) => {
   try {
-    const file = await File.findOne({ shareId: req.params.shareId });
+    const file = await File.findOne({ shareId: req.params.shareId })
+      .populate('userId', 'name email');
 
     if (!file) {
       return res.status(404).json({
@@ -360,9 +361,24 @@ exports.getSharedFile = async (req, res, next) => {
     file.accessCount += 1;
     await file.save();
 
+    // Định dạng dữ liệu trả về
+    const fileData = {
+      ...file.toObject(),
+      uploader: file.userId ? {
+        name: file.userId.name || 'Người dùng không xác định',
+        email: file.userId.email
+      } : {
+        name: 'Người dùng không xác định',
+        email: null
+      }
+    };
+    
+    // Xóa thông tin nhạy cảm
+    delete fileData.userId;
+
     res.status(200).json({
       success: true,
-      data: file
+      data: fileData
     });
   } catch (err) {
     next(err);
