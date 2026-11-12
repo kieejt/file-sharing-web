@@ -34,7 +34,7 @@ mediaRouter.get('/:id/thumb', async (req, res, next) => {
   res.setHeader('Content-Type', 'image/webp');
   res.setHeader('Cache-Control', 'private, max-age=3600, immutable');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.sendFile(storage.resolve(file.thumbKey), (err) => {
+  res.sendFile(storage.resolve(file.thumbKey), { dotfiles: 'allow' }, (err) => {
     if (err && !res.headersSent) next(err);
   });
 });

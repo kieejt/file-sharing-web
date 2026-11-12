@@ -42,6 +42,11 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     status = 413;
     code = 'TOO_LARGE';
     message = 'Dữ liệu gửi lên quá lớn';
+  } else if (typeof err?.status === 'number' && err.status >= 400 && err.status < 500) {
+    // Lỗi HTTP chuẩn từ thư viện (vd. send/serve-static trả 404, 416)
+    status = err.status;
+    code = err.status === 404 ? 'NOT_FOUND' : 'HTTP_ERROR';
+    message = err.status === 404 ? 'Không tìm thấy' : 'Yêu cầu không hợp lệ';
   }
 
   if (status >= 500) logger.error({ err, url: req.originalUrl }, 'Unhandled error');

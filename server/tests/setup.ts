@@ -3,7 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, inject } from 'vitest';
 
-const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fileshare-test-'));
+// Cố ý đặt trong thư mục bắt đầu bằng dấu chấm (giống server/.devdata) để bắt lỗi dotfiles của sendFile
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fileshare-test-'));
+const uploadDir = path.join(tmpRoot, '.data', 'uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret-0123456789-0123456789-abcdef';
@@ -25,5 +28,5 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await mongoose.disconnect();
-  fs.rmSync(uploadDir, { recursive: true, force: true });
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
 });

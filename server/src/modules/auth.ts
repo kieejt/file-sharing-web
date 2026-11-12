@@ -82,7 +82,11 @@ authRouter.post('/login', authLimiter, async (req, res) => {
 
 authRouter.post('/refresh', async (req, res) => {
   const token: string | undefined = req.cookies?.[REFRESH_COOKIE];
-  if (!token) throw unauthorized('Phiên đăng nhập đã hết hạn');
+  // Khách chưa đăng nhập: trả 204 (không phải lỗi) để trình duyệt không log lỗi mỗi lần tải trang
+  if (!token) {
+    res.status(204).end();
+    return;
+  }
   // Xoá ngay token cũ (rotation): một refresh token chỉ dùng được đúng một lần
   const session = await Session.findOneAndDelete({ tokenHash: hashToken(token), expiresAt: { $gt: new Date() } });
   if (!session) {

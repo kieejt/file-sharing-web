@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.env
+server/.devdata
+server/uploads
+uploads
+.git
+*.log
+coverage

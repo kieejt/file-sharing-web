@@ -32,6 +32,9 @@ export function createApp() {
           'media-src': ["'self'", 'blob:'],
           'frame-src': ["'self'"],
           'connect-src': ["'self'"],
+          // Không ép HTTPS cho tài nguyên con: chạy qua http://<IP-LAN>:8080 (Docker) sẽ hỏng toàn bộ JS/CSS.
+          // Khi deploy sau HTTPS, header HSTS của helmet đã đảm nhận việc này.
+          'upgrade-insecure-requests': null,
         },
       },
       crossOriginEmbedderPolicy: false,
@@ -46,6 +49,11 @@ export function createApp() {
       pinoHttp({
         logger,
         autoLogging: { ignore: (req) => req.url?.startsWith('/api/media') ?? false },
+        // Log gọn: chỉ method, url, status
+        serializers: {
+          req: (req: { method: string; url: string }) => ({ method: req.method, url: req.url?.split('?')[0] }),
+          res: (res: { statusCode: number }) => ({ status: res.statusCode }),
+        },
         customLogLevel: (_req, res, err) => (err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),
       }),
     );

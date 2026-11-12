@@ -1,195 +1,126 @@
-# FileShare - Ứng dụng chia sẻ tài liệu
+# FileShare
 
-Ứng dụng web cho phép người dùng tải lên, quản lý và chia sẻ file một cách dễ dàng và an toàn.
+Ứng dụng web lưu trữ và chia sẻ tài liệu: file riêng tư theo mặc định, chia sẻ bằng link có mật khẩu, hạn dùng và giới hạn lượt tải.
 
-## Phiên bản Mobile
+![Giao diện FileShare](client/public/landing/drive-light.webp)
 
-Dự án cũng bao gồm một ứng dụng di động được xây dựng bằng React Native (Expo) cho phép người dùng truy cập và quản lý file trên thiết bị di động của họ.
+## Tính năng
 
-Các tính năng chính của ứng dụng mobile bao gồm:
+**Quản lý file**
+- Thư mục lồng nhau, đổi tên, di chuyển (kể cả hàng loạt), tìm kiếm tiếng Việt, lọc theo loại file
+- Tải lên nhiều file cùng lúc bằng nút bấm hoặc kéo thả, có tiến trình từng file, huỷ và thử lại
+- Xem trước ảnh, PDF, video, âm thanh, văn bản và mã nguồn ngay trên trình duyệt; ảnh có thumbnail WebP
+- Thùng rác: xoá cả thư mục cùng nội dung, khôi phục nguyên vẹn, tự dọn sau 30 ngày
 
-- Đăng ký và đăng nhập người dùng.
-- Xem danh sách file đã tải lên.
-- Tải lên file mới từ thiết bị di động.
-- Xem chi tiết file, bao gồm preview ảnh.
-- Tải xuống file về thiết bị.
-- Đổi tên file.
-- Xóa file.
-- Chia sẻ file (tạo link web đến trang xem file).
+**Chia sẻ**
+- Mỗi file có nhiều link, mỗi link có mật khẩu, hạn dùng và số lượt tải riêng
+- Thống kê lượt xem và lượt tải từng link, thu hồi link ngay lập tức
+- Trang nhận file công khai, người nhận không cần tài khoản
 
-Để biết chi tiết về cách cài đặt và chạy ứng dụng mobile, vui lòng xem [mobile/README.md](mobile/README.md).
+**Tài khoản và quản trị**
+- Hạn mức dung lượng cho từng người (mặc định 2 GB), file trong thùng rác vẫn được tính
+- Trang thống kê: hoạt động 30 ngày, dung lượng theo loại file, file được tải nhiều nhất
+- Trang quản trị: tìm người dùng, đổi hạn mức, cấp quyền, khoá hoặc xoá tài khoản
+- Giao diện sáng, tối hoặc theo hệ thống; dùng tốt trên điện thoại
 
-## Tính năng chính (Phiên bản Web)
+## Bảo mật
 
-- Đăng ký và đăng nhập người dùng
-- Tải lên file với giới hạn kích thước
-- Quản lý file (xem, cập nhật, xóa)
-- Chia sẻ file với người khác thông qua liên kết
-- Tìm kiếm file
-- Cập nhật thông tin cá nhân và mật khẩu
-- Giao diện người dùng thân thiện và responsive
+- Mật khẩu băm bằng bcrypt; access token sống 15 phút, chỉ giữ trong bộ nhớ trình duyệt
+- Refresh token nằm trong cookie `httpOnly` + `SameSite=Strict`, xoay vòng sau mỗi lần dùng, DB chỉ lưu hash
+- File lưu với tên ngẫu nhiên, không có đường dẫn công khai; nội dung chỉ phục vụ qua signed URL ngắn hạn
+- Chỉ hiển thị inline các định dạng an toàn; HTML hiển thị dạng mã nguồn, SVG luôn bị ép tải xuống (chống XSS)
+- Giới hạn lượt tải được trừ nguyên tử, không thể vượt kể cả khi tải đồng thời
+- Helmet (CSP, nosniff...), giới hạn số lần thử đăng nhập và mở khoá link, escape regex khi tìm kiếm, validate mọi input bằng Zod
 
-## Công nghệ sử dụng
+## Công nghệ
 
-### Frontend (Web)
-- React
-- React Router
-- Tailwind CSS
-- Axios
-- React Dropzone
-- React Toastify
+| | |
+|---|---|
+| Frontend | React 19, TypeScript, Vite, TanStack Query, React Router, Tailwind CSS 4, Radix UI, Phosphor Icons |
+| Backend | Node.js, Express 5, TypeScript, Mongoose (MongoDB), Zod, Multer, Sharp, Pino |
+| Kiểm thử | Vitest + Supertest + MongoDB in-memory (API), script E2E trên stack thật, Playwright |
 
-### Frontend (Mobile)
-- React Native
-- Expo
-- React Native Paper
+## Chạy thử nhanh (không cần cài MongoDB)
 
-### Backend
-- Node.js
-- Express.js
-- MongoDB (Mongoose)
-- JWT Authentication
-- Multer (xử lý upload file)
-- Bcrypt (mã hóa mật khẩu)
+Yêu cầu Node.js 20.19 trở lên.
 
-## Cài đặt và chạy
-
-### Yêu cầu
-- Node.js (v14+)
-- MongoDB
-- npm hoặc yarn
-- Expo Go (cho mobile)
-
-### Cài đặt thủ công
-
-1. Clone repository:
-   ```bash
-   git clone https://github.com/kieejt/file-sharing-web.git
-   cd file-sharing-web
-   ```
-
-2. Cài đặt dependencies cho cả client, server và mobile:
-   ```bash
-   # Cài đặt dependencies cho server
-   cd server
-   npm install
-
-   # Cài đặt dependencies cho client
-   cd ../client
-   npm install
-
-   # Cài đặt dependencies cho mobile
-   cd ../mobile
-   npm install
-   ```
-3. Cấu hình MongoDB:
-   - Khởi động MongoDB Service
-   - Kết nối tới MongoDB local với connection string: `mongodb://localhost:27017`
-   - Tạo database mới với tên "fileshare"
-
-4. Tạo file `.env` cho client, server và mobile (nếu cần cấu hình API URL):
-   ```bash
-   # Tạo .env cho server
-   cd ../server
-   cp .env.example .env
-
-   # Tạo .env cho client
-   cd ../client
-   cp .env.example .env
-   
-   # Đối với mobile, cấu hình API URL thường nằm trong app.json hoặc sử dụng biến môi trường Expo.
-   # Nếu bạn sử dụng .env cho mobile, hãy tạo file đó tại thư mục mobile.
-   # cd ../mobile
-   # cp .env.example .env # Nếu có file .env.example cho mobile
-   ```
-
-5. Chạy ứng dụng:
-   ```bash
-   # Terminal 1: Chạy server
-   cd server
-   npm run dev
-
-   # Terminal 2: Chạy client (Web)
-   cd ../client
-   npm start
-
-   # Terminal 3: Chạy client (Mobile) - trong một terminal/cửa sổ khác
-   cd ../mobile
-   npx expo start
-   ```
-
-6. Truy cập ứng dụng web tại `http://localhost:3000`. Sử dụng ứng dụng Expo Go trên điện thoại hoặc simulator/emulator để truy cập ứng dụng mobile.
-
-### Cài đặt với Docker
-
-> **Lưu ý**: Cấu hình Docker Compose hiện tại chỉ bao gồm server và client web. Để chạy mobile, bạn cần chạy thủ công như hướng dẫn ở trên.
-
-> **Lưu ý**: Bạn cần cài đặt Docker Desktop và đảm bảo nó đang chạy trước khi thực hiện các bước sau.
-
-1. Clone repository:
-   ```bash
-   git clone https://github.com/kieejt/file-sharing-web.git
-   cd file-sharing-web
-   ```
-
-2. Tạo file `.env` từ file `.env.docker`:
-   ```bash
-   cp .env.docker .env
-   ```
-
-3. Chạy ứng dụng Web và Server với Docker Compose:
-   ```bash
-   docker-compose up -d
-   ```
-
-4. Truy cập ứng dụng web tại `http://localhost:3000`
-
-5. Dừng ứng dụng Docker:
-   ```bash
-   docker-compose down
-   ```
-
-## Cấu trúc dự án
-
-```
-file-sharing-web/
-├── client/                # Frontend React (Web)
-│   ├── public/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── context/
-│   │   ├── pages/
-│   │   ├── utils/
-│   │   └── ...
-│   └── ...
-├── mobile/                # Frontend React Native (Mobile)
-│   ├── assets/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── screens/
-│   │   ├── services/
-│   │   ├── types/
-│   │   └── ...
-│   ├── app.json
-│   ├── README.md
-│   └── ...
-├── server/                # Backend Node.js/Express
-│   ├── config/
-│   ├── controllers/
-│   ├── middleware/
-│   ├── models/
-│   ├── routes/
-│   ├── scripts/
-│   └── ...
-├── uploads/              # Thư mục lưu file (Server)
-├── docker-compose.yml    # Cấu hình Docker Compose
-└── ...
+```bash
+npm install
+npm run dev:mem
 ```
 
-## API Documentation
+Mở http://localhost:5173 và đăng nhập bằng tài khoản demo:
 
-Xem chi tiết API trong [server/README.md](server/README.md).
+| Email | Mật khẩu | Vai trò |
+|---|---|---|
+| `demo@fileshare.vn` | `Demo12345` | Người dùng |
+| `admin@fileshare.vn` | `Admin12345` | Quản trị |
 
-## Liên hệ
+`dev:mem` khởi động MongoDB nhúng, dữ liệu lưu ở `server/.devdata` nên vẫn còn sau khi khởi động lại.
 
-Link dự án: [https://github.com/kieejt/file-sharing-web](https://github.com/kieejt/file-sharing-web) 
+## Chạy với MongoDB thật
+
+```bash
+cp server/.env.example server/.env   # sửa MONGO_URI và JWT_SECRET
+npm install
+npm run dev                           # API :5000, web :5173
+npm run seed -w server                # (tuỳ chọn) tạo tài khoản demo
+```
+
+Người đăng ký đầu tiên tự động trở thành quản trị viên.
+
+## Triển khai bằng Docker
+
+```bash
+cp .env.example .env    # đặt JWT_SECRET
+docker compose up -d --build
+```
+
+Mở http://localhost:8080. Image build cả frontend và backend; Express phục vụ luôn giao diện, MongoDB chạy ở container riêng, file tải lên nằm trong volume `uploads`.
+
+Khi đặt sau reverse proxy có HTTPS, đặt `TRUST_PROXY=true` và `CLIENT_ORIGIN` đúng domain.
+
+## Kiểm thử
+
+```bash
+npm test                      # 43 test API + unit test frontend
+npm run typecheck
+npm run dev:mem               # terminal khác
+npm run test:e2e              # 17 bước E2E trên stack đang chạy
+```
+
+## Cấu trúc
+
+```
+server/src
+  config/      biến môi trường (validate bằng Zod), kết nối DB
+  lib/         lưu trữ file, token, phân loại file, phục vụ file an toàn
+  middleware/  xác thực, upload, rate limit, xử lý lỗi
+  models/      User, Session, Folder, File, ShareLink, Activity
+  modules/     auth, files + folders, trash, shares, media, stats, admin
+  services/    nghiệp vụ dùng chung (thùng rác, di chuyển thư mục, thống kê)
+server/tests   test tích hợp API
+client/src
+  components/  UI dùng chung, trình quản lý file, biểu đồ
+  layouts/     khung ứng dụng (sidebar, thanh trên)
+  lib/         API client, auth, truy vấn, hàng đợi upload, theme
+  pages/       các trang
+scripts/       e2e-api.mjs
+```
+
+## Biến môi trường (server)
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `MONGO_URI` | `mongodb://localhost:27017/fileshare` | Kết nối MongoDB |
+| `JWT_SECRET` | (bắt buộc, >= 32 ký tự) | Bí mật ký token |
+| `UPLOAD_DIR` | `./uploads` | Thư mục lưu file |
+| `MAX_FILE_SIZE_MB` | `200` | Giới hạn mỗi file |
+| `DEFAULT_QUOTA_MB` | `2048` | Hạn mức mặc định mỗi người |
+| `TRASH_RETENTION_DAYS` | `30` | Số ngày giữ trong thùng rác |
+| `CLIENT_ORIGIN` | `http://localhost:5173` | Domain frontend (CORS) |
+| `TRUST_PROXY` | `false` | Bật khi chạy sau reverse proxy |
+
+## Giấy phép
+
+MIT

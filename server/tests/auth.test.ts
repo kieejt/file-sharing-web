@@ -63,7 +63,15 @@ describe('auth', () => {
     const { agent } = await signup();
     expect((await agent.post('/api/auth/refresh')).status).toBe(200);
     expect((await agent.post('/api/auth/logout')).status).toBe(204);
-    expect((await agent.post('/api/auth/refresh')).status).toBe(401);
+    // Cookie đã bị xoá: refresh không còn phiên (204, không cấp token)
+    const after = await agent.post('/api/auth/refresh');
+    expect(after.status).toBe(204);
+    expect(after.body).not.toHaveProperty('accessToken');
+  });
+
+  it('refresh không có cookie trả 204, cookie giả trả 401', async () => {
+    expect((await request(app).post('/api/auth/refresh')).status).toBe(204);
+    expect((await request(app).post('/api/auth/refresh').set('Cookie', 'fs_refresh=gia-mao')).status).toBe(401);
   });
 
   it('đổi mật khẩu: đăng xuất phiên cũ, đăng nhập bằng mật khẩu mới', async () => {
@@ -86,5 +94,14 @@ describe('auth', () => {
     const res = await request(app).patch('/api/auth/me').set(auth).send({ name: '  Trần Bảo  ' });
     expect(res.status).toBe(200);
     expect(res.body.user.name).toBe('Trần Bảo');
+  });
+});
+
+describe('security headers', () => {
+  it('CSP không ép upgrade-insecure-requests (chạy được qua HTTP nội bộ)', async () => {
+    const res = await request(app).get('/api/health');
+    expect(res.headers['content-security-policy']).toBeDefined();
+    expect(res.headers['content-security-policy']).not.toMatch(/upgrade-insecure-requests/);
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
   });
 });
