@@ -1,33 +1,49 @@
 {
-  "name": "file-sharing-server",
-  "version": "1.0.0",
-  "description": "Backend cho ứng dụng chia sẻ file",
-  "main": "index.js",
+  "name": "@fileshare/server",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "init-db": "node scripts/initDb.js",
-    "seed": "node scripts/seedData.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "dev:mem": "tsx watch --env-file-if-exists=.env src/dev-memory.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "seed": "tsx --env-file-if-exists=.env src/scripts/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
-  "keywords": [
-    "file-sharing",
-    "express",
-    "node",
-    "mongodb"
-  ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
-    "dotenv": "^16.0.3",
-    "express": "^4.18.2",
-    "jsonwebtoken": "^9.0.0",
-    "mongoose": "^7.0.3",
-    "multer": "^1.4.5-lts.1"
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.2",
+    "content-disposition": "^2.0.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.4",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.12.1",
+    "multer": "^2.5.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "sharp": "^0.35.5",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "@types/compression": "^1.8.1",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.6",
+    "@types/supertest": "^6.0.3",
+    "mongodb-memory-server": "^11.3.0",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

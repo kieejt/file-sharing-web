@@ -1,14 +1,25 @@
 {
-  "dependencies": {
-    "@react-native-async-storage/async-storage": "^2.1.2",
-    "@react-navigation/bottom-tabs": "^7.3.14",
-    "@react-navigation/native": "^7.1.10",
-    "@react-navigation/native-stack": "^7.3.14",
-    "axios": "^1.9.0",
-    "expo-document-picker": "^13.1.5",
-    "expo-file-system": "^18.1.10",
-    "react-native-paper": "^5.14.5",
-    "react-native-safe-area-context": "^5.4.1",
-    "react-native-screens": "^4.11.1"
+  "name": "fileshare",
+  "private": true,
+  "version": "2.0.0",
+  "description": "FileShare – ứng dụng lưu trữ và chia sẻ file",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:mem": "concurrently -n server,client -c blue,green \"npm run dev:mem -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w server && npm run build -w client",
+    "start": "npm start -w server",
+    "test": "npm test -w server && npm test -w client",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "lint": "npm run lint -w client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20.11"
   }
 }
