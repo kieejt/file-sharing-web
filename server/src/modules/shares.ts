@@ -28,7 +28,8 @@ function toShareDTO(s: ShareDoc, file?: Pick<FileDoc, 'id' | 'name' | 'kind' | '
     id: s.id as string,
     token: s.token,
     path: `/s/${s.token}`,
-    hasPassword: !!s.passwordHash,
+    // Chế độ suy ra từ mật khẩu: riêng tư = bắt buộc biết mật khẩu, công khai = ai có link cũng mở được
+    access: (s.passwordHash ? 'private' : 'public') as 'private' | 'public',
     expiresAt: s.expiresAt,
     maxDownloads: s.maxDownloads,
     downloadCount: s.downloadCount,
@@ -44,12 +45,22 @@ function toShareDTO(s: ShareDoc, file?: Pick<FileDoc, 'id' | 'name' | 'kind' | '
 export const sharesRouter = Router();
 sharesRouter.use(requireAuth);
 
-const createSchema = z.object({
-  expiresInHours: z.number().int().min(1).max(24 * 365).nullable().optional(),
-  password: z.string().max(128).optional().nullable()
-    .refine((v) => !v || v.length >= 4, 'Mật khẩu chia sẻ cần ít nhất 4 ký tự'),
-  maxDownloads: z.number().int().min(1).max(100_000).nullable().optional(),
-});
+const createSchema = z
+  .object({
+    access: z.enum(['public', 'private'], 'Hãy chọn chia sẻ công khai hoặc riêng tư'),
+    expiresInHours: z.number().int().min(1).max(24 * 365).nullable().optional(),
+    password: z.string().max(128).optional().nullable()
+      .refine((v) => !v || v.length >= 4, 'Mật khẩu chia sẻ cần ít nhất 4 ký tự'),
+    maxDownloads: z.number().int().min(1).max(100_000).nullable().optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.access === 'private' && !v.password) {
+      ctx.addIssue({ code: 'custom', path: ['password'], message: 'Link riêng tư cần mật khẩu, ít nhất 4 ký tự' });
+    }
+    if (v.access === 'public' && v.password) {
+      ctx.addIssue({ code: 'custom', path: ['password'], message: 'Link công khai không dùng mật khẩu' });
+    }
+  });
 
 sharesRouter.get('/shares', async (req, res) => {
   const user = currentUser(req);

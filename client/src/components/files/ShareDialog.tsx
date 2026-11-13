@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Check, Copy, LockSimple, Prohibit } from '@phosphor-icons/react';
+import { Check, Copy, Globe, LockSimple, Prohibit } from '@phosphor-icons/react';
 import { errorMessage, fieldErrors } from '@/lib/api';
 import { useFileShares, useShareMutations } from '@/lib/queries';
 import { formatDateTime, formatRemaining } from '@/lib/format';
@@ -26,6 +26,25 @@ export const STATUS_META: Record<ShareStatus, { label: string; tone: 'green' | '
   revoked: { label: 'Đã thu hồi', tone: 'red' },
 };
 
+export function AccessPill({ access }: { access: Share['access'] }) {
+  return access === 'private' ? (
+    <Pill tone="stone">
+      <LockSimple size={11} weight="bold" className="mr-1" />
+      Riêng tư
+    </Pill>
+  ) : (
+    <Pill tone="yellow">
+      <Globe size={11} weight="bold" className="mr-1" />
+      Công khai
+    </Pill>
+  );
+}
+
+const ACCESS_OPTIONS: { value: Share['access']; label: string; hint: string; icon: typeof Globe }[] = [
+  { value: 'private', label: 'Riêng tư', hint: 'Người nhận phải nhập mật khẩu để mở', icon: LockSimple },
+  { value: 'public', label: 'Công khai', hint: 'Bất kỳ ai có link đều mở được file', icon: Globe },
+];
+
 const EXPIRY = [
   { value: '', label: 'Không giới hạn' },
   { value: '1', label: '1 giờ' },
@@ -48,9 +67,9 @@ function LinkRow({ s, onRevoke, highlight }: { s: Share; onRevoke: () => void; h
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <code className="truncate font-mono text-[12.5px] text-ink">{shareUrl(s).replace(/^https?:\/\//, '')}</code>
-          {s.hasPassword ? <LockSimple size={13} weight="bold" className="shrink-0 text-ink-2" aria-label="Có mật khẩu" /> : null}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-ink-2">
+          <AccessPill access={s.access} />
           <Pill tone={meta.tone}>{meta.label}</Pill>
           <span className="tabular">{shareSummary(s)}</span>
         </div>
@@ -77,6 +96,7 @@ export function ShareDialog({ file, onClose }: { file: { id: string; name: strin
   const shares = useFileShares(file?.id ?? null);
   const { create, revoke } = useShareMutations();
   const confirm = useConfirm();
+  const [access, setAccess] = useState<Share['access']>('private');
   const [expiry, setExpiry] = useState('');
   const [password, setPassword] = useState('');
   const [maxDl, setMaxDl] = useState('');
@@ -85,6 +105,7 @@ export function ShareDialog({ file, onClose }: { file: { id: string; name: strin
   const ids = { expiry: useFieldId('exp'), pw: useFieldId('pw'), max: useFieldId('max') };
 
   const reset = () => {
+    setAccess('private');
     setExpiry('');
     setPassword('');
     setMaxDl('');
@@ -100,12 +121,17 @@ export function ShareDialog({ file, onClose }: { file: { id: string; name: strin
       setErrors({ maxDownloads: 'Nhập số nguyên lớn hơn 0' });
       return;
     }
+    if (access === 'private' && password.length < 4) {
+      setErrors({ password: 'Link riêng tư cần mật khẩu, ít nhất 4 ký tự' });
+      return;
+    }
     setErrors({});
     try {
       const share = await create.mutateAsync({
         fileId: file.id,
+        access,
         expiresInHours: expiry ? Number(expiry) : null,
-        password: password || null,
+        password: access === 'private' ? password : null,
         maxDownloads: max,
       });
       setLastCreated(share.id);
@@ -147,6 +173,31 @@ export function ShareDialog({ file, onClose }: { file: { id: string; name: strin
       description={file?.name}
     >
       <form onSubmit={submit} className="grid gap-4 rounded-box border border-line bg-surface-2/60 p-4 sm:grid-cols-3">
+        <div role="radiogroup" aria-label="Ai có thể mở link" className="grid gap-2 sm:col-span-3 sm:grid-cols-2">
+          {ACCESS_OPTIONS.map((o) => {
+            const Icon = o.icon;
+            const on = access === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => {
+                  setAccess(o.value);
+                  setErrors({});
+                }}
+                className={`flex items-start gap-3 rounded-ctl border px-3 py-2.5 text-left transition-colors ${on ? 'border-accent bg-accent-soft/40' : 'border-line hover:border-line-strong'}`}
+              >
+                <Icon size={18} weight="bold" className={`mt-0.5 shrink-0 ${on ? 'text-accent-text' : 'text-ink-2'}`} />
+                <span>
+                  <span className="block text-[13.5px] font-medium text-ink">{o.label}</span>
+                  <span className="block text-[12px] text-ink-2">{o.hint}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
         <Field label="Hạn dùng" htmlFor={ids.expiry}>
           <Select id={ids.expiry} value={expiry} onChange={(e) => setExpiry(e.target.value)}>
             {EXPIRY.map((o) => (
@@ -156,9 +207,11 @@ export function ShareDialog({ file, onClose }: { file: { id: string; name: strin
             ))}
           </Select>
         </Field>
-        <Field label="Mật khẩu" htmlFor={ids.pw} error={errors.password} hint="Để trống nếu không cần">
-          <Input id={ids.pw} type="text" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} invalid={!!errors.password} placeholder="Tối thiểu 4 ký tự" />
-        </Field>
+        {access === 'private' ? (
+          <Field label="Mật khẩu" htmlFor={ids.pw} error={errors.password} hint="Gửi mật khẩu này cho người nhận">
+            <Input id={ids.pw} type="text" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} invalid={!!errors.password} placeholder="Tối thiểu 4 ký tự" />
+          </Field>
+        ) : null}
         <Field label="Giới hạn lượt tải" htmlFor={ids.max} error={errors.maxDownloads} hint="Để trống nếu không giới hạn">
           <Input id={ids.max} inputMode="numeric" value={maxDl} onChange={(e) => setMaxDl(e.target.value.replace(/\D/g, ''))} invalid={!!errors.maxDownloads} placeholder="Ví dụ 10" />
         </Field>

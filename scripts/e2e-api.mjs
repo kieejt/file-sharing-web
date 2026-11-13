@@ -189,7 +189,7 @@ await step('xem trước PDF inline và tải xuống tăng lượt tải', asyn
 });
 
 await step('chia sẻ có mật khẩu: khách phải mở khoá', async () => {
-  const s = await demo.call('POST', `/api/files/${ids.report}/shares`, { body: { password: 'q3-2026', expiresInHours: 168 } });
+  const s = await demo.call('POST', `/api/files/${ids.report}/shares`, { body: { access: 'private', password: 'q3-2026', expiresInHours: 168 } });
   assert.equal(s.status, 201);
   ids.pwShare = s.body.share.token;
   const meta = await guest.call('GET', `/api/public/s/${ids.pwShare}`);
@@ -202,7 +202,7 @@ await step('chia sẻ có mật khẩu: khách phải mở khoá', async () => {
 });
 
 await step('chia sẻ giới hạn 2 lượt tải: lượt thứ 3 bị chặn (410)', async () => {
-  const s = await demo.call('POST', `/api/files/${ids.photo}/shares`, { body: { maxDownloads: 2 } });
+  const s = await demo.call('POST', `/api/files/${ids.photo}/shares`, { body: { access: 'public', maxDownloads: 2 } });
   ids.limited = s.body.share.token;
   const url = `/api/public/s/${ids.limited}/content?dl=1`;
   for (let i = 0; i < 2; i++) assert.equal((await guest.call('GET', url, { raw: true })).status, 200);
@@ -211,10 +211,10 @@ await step('chia sẻ giới hạn 2 lượt tải: lượt thứ 3 bị chặn 
 });
 
 await step('link công khai thường + thu hồi', async () => {
-  const s = await demo.call('POST', `/api/files/${ids.banner}/shares`, { body: {} });
+  const s = await demo.call('POST', `/api/files/${ids.banner}/shares`, { body: { access: 'public' } });
   ids.openShare = s.body.share.token;
   assert.equal((await guest.call('GET', `/api/public/s/${ids.openShare}`)).body.file.previewable, true);
-  const temp = await demo.call('POST', `/api/files/${ids.banner}/shares`, { body: { expiresInHours: 1 } });
+  const temp = await demo.call('POST', `/api/files/${ids.banner}/shares`, { body: { access: 'public', expiresInHours: 1 } });
   assert.equal((await demo.call('DELETE', `/api/shares/${temp.body.share.id}`)).status, 204);
   assert.equal((await guest.call('GET', `/api/public/s/${temp.body.share.token}`)).status, 404);
   const mine = await demo.call('GET', '/api/shares');

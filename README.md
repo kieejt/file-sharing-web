@@ -13,7 +13,7 @@
 - Thùng rác: xoá cả thư mục cùng nội dung, khôi phục nguyên vẹn, tự dọn sau 30 ngày
 
 **Chia sẻ**
-- Mỗi file có nhiều link, mỗi link có mật khẩu, hạn dùng và số lượt tải riêng
+- Mỗi file có nhiều link, mỗi link chọn rõ **Riêng tư** (bắt buộc mật khẩu) hoặc **Công khai** (ai có link cũng mở được), cùng hạn dùng và số lượt tải riêng
 - Thống kê lượt xem và lượt tải từng link, thu hồi link ngay lập tức
 - Trang nhận file công khai, người nhận không cần tài khoản
 

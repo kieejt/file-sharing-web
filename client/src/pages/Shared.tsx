@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Copy, LockSimple, Prohibit } from '@phosphor-icons/react';
+import { Copy, Prohibit } from '@phosphor-icons/react';
 import { errorMessage } from '@/lib/api';
 import { useMyShares, useShareMutations } from '@/lib/queries';
 import { formatRelative } from '@/lib/format';
@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { useConfirm } from '@/components/confirm';
 import { EmptyState, FileBadge, IconButton, Pill, StackArt, cx } from '@/components/ui';
 import { ListSkeleton } from '@/components/files/FileViews';
-import { STATUS_META, copyText, shareSummary, shareUrl } from '@/components/files/ShareDialog';
+import { AccessPill, STATUS_META, copyText, shareSummary, shareUrl } from '@/components/files/ShareDialog';
 
 type Filter = 'all' | 'active' | 'inactive';
 
@@ -76,7 +76,7 @@ export default function Shared() {
         <EmptyState
           art={<StackArt />}
           title={all.length ? 'Không có link nào trong mục này' : 'Bạn chưa chia sẻ file nào'}
-          body={all.length ? undefined : 'Mở menu của một file và chọn "Chia sẻ" để tạo link có mật khẩu, hạn dùng hoặc giới hạn lượt tải.'}
+          body={all.length ? undefined : 'Mở menu của một file và chọn "Chia sẻ" để tạo link riêng tư (có mật khẩu) hoặc công khai, kèm hạn dùng và giới hạn lượt tải.'}
         />
       ) : (
         <ul className="divide-y divide-line overflow-hidden rounded-box border border-line bg-surface">
@@ -90,13 +90,15 @@ export default function Shared() {
                     <p className="truncate text-[13.5px] font-medium text-ink">{s.file?.name}</p>
                     <p className="flex min-w-0 items-center gap-1.5 text-[12px] text-ink-2">
                       <code className="truncate font-mono">{shareUrl(s).replace(/^https?:\/\//, '')}</code>
-                      {s.hasPassword ? <LockSimple size={12} weight="bold" aria-label="Có mật khẩu" className="shrink-0" /> : null}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 sm:w-[380px] sm:justify-end">
                   <div className="min-w-0 flex-1 sm:text-right">
-                    <Pill tone={meta.tone}>{meta.label}</Pill>
+                    <span className="inline-flex items-center gap-1.5">
+                      <AccessPill access={s.access} />
+                      <Pill tone={meta.tone}>{meta.label}</Pill>
+                    </span>
                     <p className="tabular mt-1 truncate text-[12px] text-ink-2">
                       {shareSummary(s)} · tạo {formatRelative(s.createdAt).toLowerCase()}
                     </p>

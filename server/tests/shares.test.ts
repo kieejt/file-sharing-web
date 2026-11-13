@@ -6,7 +6,8 @@ import { ShareLink } from '../src/models/ShareLink.js';
 async function setup(opts: Record<string, unknown> = {}, file = { name: 'tai-lieu.txt', content: 'chia sẻ' }) {
   const owner = await signup('Lê Thu Hà');
   const f = (await uploadFile(owner.auth, file.name, file.content)).body.files[0];
-  const res = await request(app).post(`/api/files/${f.id}/shares`).set(owner.auth).send(opts);
+  const access = opts.password ? 'private' : 'public';
+  const res = await request(app).post(`/api/files/${f.id}/shares`).set(owner.auth).send({ access, ...opts });
   expect(res.status).toBe(201);
   return { owner, file: f, share: res.body.share };
 }
@@ -32,7 +33,7 @@ describe('chia sẻ', () => {
 
   it('link có mật khẩu: phải mở khoá mới xem / tải được', async () => {
     const { share } = await setup({ password: 'mo-khoa' });
-    expect(share.hasPassword).toBe(true);
+    expect(share.access).toBe('private');
     const meta = await request(app).get(`/api/public/s/${share.token}`);
     expect(meta.body).toEqual({ requiresPassword: true });
     expect((await request(app).get(`/api/public/s/${share.token}/content?dl=1`)).status).toBe(401);
@@ -82,7 +83,7 @@ describe('chia sẻ', () => {
     expect((await request(app).delete(`/api/shares/${share.id}`).set(owner.auth)).status).toBe(204);
     expect((await request(app).get(`/api/public/s/${share.token}`)).status).toBe(404);
 
-    const s2 = (await request(app).post(`/api/files/${file.id}/shares`).set(owner.auth).send({})).body.share;
+    const s2 = (await request(app).post(`/api/files/${file.id}/shares`).set(owner.auth).send({ access: 'public' })).body.share;
     await request(app).delete(`/api/files/${file.id}`).set(owner.auth);
     expect((await request(app).get(`/api/public/s/${s2.token}`)).status).toBe(404);
   });
@@ -90,13 +91,13 @@ describe('chia sẻ', () => {
   it('không tạo được link cho file của người khác', async () => {
     const { file } = await setup();
     const stranger = await signup();
-    expect((await request(app).post(`/api/files/${file.id}/shares`).set(stranger.auth).send({})).status).toBe(404);
+    expect((await request(app).post(`/api/files/${file.id}/shares`).set(stranger.auth).send({ access: 'public' })).status).toBe(404);
   });
 
   it('danh sách link đang chia sẻ của tôi', async () => {
     const { owner } = await setup({ password: 'abcd', maxDownloads: 5 });
     const res = await request(app).get('/api/shares').set(owner.auth);
     expect(res.body.shares).toHaveLength(1);
-    expect(res.body.shares[0]).toMatchObject({ hasPassword: true, maxDownloads: 5, file: { name: 'tai-lieu.txt' } });
+    expect(res.body.shares[0]).toMatchObject({ access: 'private', maxDownloads: 5, file: { name: 'tai-lieu.txt' } });
   });
 });

@@ -74,7 +74,7 @@ export interface Share {
   id: string;
   token: string;
   path: string;
-  hasPassword: boolean;
+  access: 'public' | 'private';
   expiresAt: string | null;
   maxDownloads: number | null;
   downloadCount: number;

@@ -133,7 +133,7 @@ export function useShareMutations() {
   const onSuccess = () => Promise.all([qc.invalidateQueries({ queryKey: ['shares'] }), qc.invalidateQueries({ queryKey: ['stats'] })]);
   return {
     create: useMutation({
-      mutationFn: async (v: { fileId: string; expiresInHours: number | null; password: string | null; maxDownloads: number | null }) =>
+      mutationFn: async (v: { fileId: string; access: 'public' | 'private'; expiresInHours: number | null; password: string | null; maxDownloads: number | null }) =>
         (await api.post<{ share: Share }>(`/files/${v.fileId}/shares`, v)).data.share,
       onSuccess,
     }),
