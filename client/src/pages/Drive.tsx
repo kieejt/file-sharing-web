@@ -118,7 +118,7 @@ export default function Drive() {
           data && !isEmpty ? (
             <span className="tabular">
               {folders.length ? `${folders.length} thư mục, ` : ''}
-              {files.length} file
+              {data.totalFiles} file
             </span>
           ) : undefined
         }
@@ -172,6 +172,14 @@ export default function Drive() {
       {isDragActive ? (
         <div className="fade-in pointer-events-none absolute -inset-3 z-20 flex items-center justify-center rounded-box border-2 border-dashed border-accent bg-accent-soft/80">
           <p className="rounded-ctl bg-surface px-4 py-2 text-[14px] font-medium text-accent-text shadow-pop">Thả để tải lên {title}</p>
+        </div>
+      ) : null}
+
+      {drive.hasNextPage ? (
+        <div className="mt-4 flex justify-center">
+          <Button loading={drive.isFetchingNextPage} onClick={() => void drive.fetchNextPage()}>
+            Tải thêm ({files.length}/{data?.totalFiles})
+          </Button>
         </div>
       ) : null}
 

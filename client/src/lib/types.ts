@@ -58,6 +58,9 @@ export interface DriveListing {
   breadcrumbs: Crumb[];
   folders: Folder[];
   files: FileItem[];
+  totalFiles: number;
+  page: number;
+  hasMore: boolean;
 }
 
 export interface FileLinks {

@@ -29,17 +29,22 @@ export interface AuthResponse {
 
 // Gộp các lần refresh đồng thời thành một request duy nhất
 let refreshing: Promise<AuthResponse> | null = null;
+
+const requestRefresh = () =>
+  axios.post<AuthResponse>('/api/auth/refresh', null, { withCredentials: true }).then((r) => {
+    if (r.status === 204 || !r.data?.accessToken) throw new Error('NO_SESSION');
+    setAccessToken(r.data.accessToken);
+    return r.data;
+  });
+
 export function refreshSession() {
-  refreshing ??= axios
-    .post<AuthResponse>('/api/auth/refresh', null, { withCredentials: true })
-    .then((r) => {
-      if (r.status === 204 || !r.data?.accessToken) throw new Error('NO_SESSION');
-      setAccessToken(r.data.accessToken);
-      return r.data;
-    })
-    .finally(() => {
-      refreshing = null;
-    });
+  // Cookie refresh dùng chung giữa các tab và chỉ dùng được một lần: hai tab refresh cùng lúc sẽ khiến tab sau bị 401.
+  // Khoá Web Locks xếp chúng nối đuôi nhau, tab sau sẽ gửi cookie mới do tab trước vừa nhận (chỉ có ở HTTPS/localhost).
+  const run = async (): Promise<AuthResponse> =>
+    navigator.locks ? await navigator.locks.request('fs-refresh', requestRefresh) : await requestRefresh();
+  refreshing ??= run().finally(() => {
+    refreshing = null;
+  });
   return refreshing;
 }
 

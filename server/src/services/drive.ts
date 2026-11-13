@@ -6,6 +6,7 @@ import { File, type FileDoc } from '../models/File.js';
 import { Folder, type FolderDoc } from '../models/Folder.js';
 import { ShareLink } from '../models/ShareLink.js';
 import { User } from '../models/User.js';
+import { Upload, type UploadDoc } from '../models/Upload.js';
 import { Activity, type ACTIVITY_TYPES } from '../models/Activity.js';
 import { Session } from '../models/Session.js';
 import { storage } from '../lib/storage.js';
@@ -13,6 +14,7 @@ import { safeInlineType } from '../lib/fileKind.js';
 import { signMediaToken } from '../lib/tokens.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
+import { normalizeName } from '../lib/validate.js';
 import { env } from '../config/env.js';
 
 const oid = (id: string | Types.ObjectId) => (typeof id === 'string' ? new Types.ObjectId(id) : id);
@@ -218,8 +220,91 @@ export async function deleteUserData(userId: string) {
     ShareLink.deleteMany({ userId }),
     Activity.deleteMany({ userId }),
     Session.deleteMany({ userId }),
+    Upload.deleteMany({ userId }),
   ]);
   await fsp.rm(path.join(storage.root, userId), { recursive: true, force: true });
+}
+
+/* --------------------------------------------------- quota & upload dở */
+
+/** Giữ chỗ dung lượng một cách nguyên tử; trả false nếu vượt hạn mức. */
+export async function reserveQuota(userId: Types.ObjectId | string, bytes: number) {
+  const r = await User.updateOne(
+    { _id: userId, $expr: { $lte: [{ $add: ['$storageUsed', bytes] }, '$storageQuota'] } },
+    { $inc: { storageUsed: bytes } },
+  );
+  return r.modifiedCount > 0;
+}
+
+export const refundQuota = (userId: Types.ObjectId | string, bytes: number) =>
+  User.updateOne({ _id: userId }, [{ $set: { storageUsed: { $max: [0, { $subtract: ['$storageUsed', bytes] }] } } }], {
+    updatePipeline: true,
+  });
+
+/** Huỷ một phiên tải theo đoạn: xoá file tạm và trả lại dung lượng đã giữ chỗ. */
+export async function discardUpload(up: UploadDoc) {
+  await storage.remove(up.storageKey);
+  await Upload.deleteOne({ _id: up._id });
+  await refundQuota(up.userId, up.size);
+}
+
+export async function purgeExpiredUploads(now = new Date()) {
+  const expired = await Upload.find({ expiresAt: { $lt: now } });
+  for (const up of expired) {
+    try {
+      await discardUpload(up);
+    } catch (err) {
+      logger.warn({ err }, 'purge expired upload failed');
+    }
+  }
+  return expired.length;
+}
+
+/**
+ * Xoá file trên đĩa không còn bản ghi nào trỏ tới (rớt lại do lỗi hoặc server chết giữa chừng).
+ * Chỉ động vào file cũ hơn `graceMs` và thư mục của user còn tồn tại, để không xoá nhầm khi trỏ nhầm DB.
+ */
+export async function sweepOrphanFiles(graceMs = 86_400_000) {
+  const cutoff = Date.now() - graceMs;
+  let removed = 0;
+  for (const userId of await fsp.readdir(storage.root).catch(() => [])) {
+    if (!Types.ObjectId.isValid(userId) || !(await User.exists({ _id: userId }))) continue;
+    const entries = await fsp.readdir(path.join(storage.root, userId), { withFileTypes: true });
+    const old: string[] = [];
+    for (const e of entries) {
+      if (e.isFile() && (await fsp.stat(path.join(storage.root, userId, e.name))).mtimeMs < cutoff) old.push(`${userId}/${e.name}`);
+    }
+    if (!old.length) continue;
+    const [files, uploads] = await Promise.all([
+      File.find({ userId, $or: [{ storageKey: { $in: old } }, { thumbKey: { $in: old } }] }, { storageKey: 1, thumbKey: 1 }).lean(),
+      Upload.find({ userId, storageKey: { $in: old } }, { storageKey: 1 }).lean(),
+    ]);
+    const known = new Set<string | null | undefined>([...files.flatMap((f) => [f.storageKey, f.thumbKey]), ...uploads.map((u) => u.storageKey)]);
+    for (const key of old) {
+      if (known.has(key)) continue;
+      await storage.remove(key);
+      removed++;
+    }
+  }
+  return removed;
+}
+
+/** Điền `nameNorm` cho file tạo trước khi có trường này (chạy lúc khởi động, rất nhanh khi đã xong). */
+export async function backfillNameNorm() {
+  let ops: Parameters<typeof File.bulkWrite>[0] = [];
+  let done = 0;
+  const flush = async () => {
+    if (!ops.length) return;
+    await File.bulkWrite(ops);
+    done += ops.length;
+    ops = [];
+  };
+  for await (const f of File.find({ nameNorm: { $exists: false } }, { name: 1 }).lean().cursor()) {
+    ops.push({ updateOne: { filter: { _id: f._id }, update: { $set: { nameNorm: normalizeName(f.name) } } } });
+    if (ops.length >= 500) await flush();
+  }
+  await flush();
+  return done;
 }
 
 /* ------------------------------------------------------------ activity */

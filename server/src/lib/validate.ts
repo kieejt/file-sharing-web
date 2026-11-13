@@ -18,3 +18,7 @@ export function parse<T extends z.ZodType>(schema: T, data: unknown): z.output<T
 }
 
 export const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Chữ thường, bỏ dấu tiếng Việt: dùng để tìm "tai lieu" ra "Tài liệu". */
+export const normalizeName = (s: string) =>
+  s.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase();

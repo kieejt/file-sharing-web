@@ -9,7 +9,7 @@ import { pinoHttp } from 'pino-http';
 import mongoose from 'mongoose';
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
-import { apiLimiter } from './middleware/rateLimit.js';
+import { apiLimiter, mediaLimiter } from './middleware/rateLimit.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
 import { authRouter } from './modules/auth.js';
 import { filesRouter } from './modules/files.js';
@@ -63,10 +63,10 @@ export function createApp() {
     res.json({ ok: true, db: mongoose.connection.readyState === 1 });
   });
 
+  app.use('/api/media', mediaLimiter, mediaRouter);
   app.use('/api', apiLimiter);
   app.use('/api/auth', authRouter);
   app.use('/api/public/s', publicShareRouter);
-  app.use('/api/media', mediaRouter);
   app.use('/api/trash', trashRouter);
   app.use('/api/stats', statsRouter);
   app.use('/api/admin', adminRouter);

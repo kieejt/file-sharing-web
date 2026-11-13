@@ -63,6 +63,14 @@ authRouter.post('/register', authLimiter, async (req, res) => {
     storageQuota: env.defaultQuota,
     lastLoginAt: new Date(),
   });
+  if (isFirst) {
+    // Hai lần đăng ký đồng thời trên DB trống đều thấy "chưa có ai": chỉ người có _id nhỏ nhất giữ quyền admin
+    const earliest = await User.findOne().sort({ _id: 1 }).select('_id').lean();
+    if (earliest && !earliest._id.equals(user._id)) {
+      await User.updateOne({ _id: user._id }, { role: 'user' });
+      user.role = 'user';
+    }
+  }
   res.status(201).json(await issueSession(req, res, user));
 });
 

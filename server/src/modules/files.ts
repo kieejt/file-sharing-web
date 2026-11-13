@@ -1,11 +1,17 @@
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
+import { Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { Router, type NextFunction, type Request, type Response } from 'express';
+import { Types } from 'mongoose';
 import sharp from 'sharp';
 import { z } from 'zod';
 import { File } from '../models/File.js';
 import { Folder, toFolderDTO } from '../models/Folder.js';
-import { User } from '../models/User.js';
-import { objectId, parse, escapeRegex } from '../lib/validate.js';
-import { AppError, badRequest } from '../lib/errors.js';
+import { Upload, type UploadDoc } from '../models/Upload.js';
+import { objectId, parse, escapeRegex, normalizeName } from '../lib/validate.js';
+import { AppError, badRequest, notFound } from '../lib/errors.js';
+import { env } from '../config/env.js';
 import { detectKind, THUMBNAIL_MIME } from '../lib/fileKind.js';
 import { storage } from '../lib/storage.js';
 import { logger } from '../lib/logger.js';
@@ -13,11 +19,14 @@ import { currentUser, requireAuth } from '../middleware/auth.js';
 import { keyFromUploaded, upload, MAX_FILES_PER_REQUEST } from '../middleware/upload.js';
 import {
   breadcrumbsOf,
+  discardUpload,
   fileLinks,
   getOwnedFile,
   getOwnedFolder,
   logActivity,
   moveFolder,
+  refundQuota,
+  reserveQuota,
   resolveTargetFolder,
   toFileDTO,
   trashFile,
@@ -26,6 +35,7 @@ import {
 import { FILE_KINDS } from '../models/File.js';
 
 const folderRef = z.union([z.literal('root'), objectId]).nullable().optional();
+const DRIVE_PAGE_SIZE = 200;
 const sortSchema = z.object({
   sort: z.enum(['name', 'createdAt', 'size']).default('createdAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
@@ -50,6 +60,22 @@ function quotaPrecheck(req: Request, _res: Response, next: NextFunction) {
     throw new AppError(413, 'Không đủ dung lượng lưu trữ', 'QUOTA_EXCEEDED');
   }
   next();
+}
+
+// sharp giải mã cả ảnh trong RAM: xử lý 20 ảnh lớn cùng lúc dễ làm tràn bộ nhớ
+const THUMBNAIL_CONCURRENCY = 3;
+
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>) {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]!, i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
 }
 
 async function makeThumbnail(userId: string, sourceKey: string, mime: string) {
@@ -87,57 +113,211 @@ filesRouter.post('/files/upload', quotaPrecheck, upload.array('files', MAX_FILES
   }
 
   const total = uploaded.reduce((s, f) => s + f.size, 0);
-  const reserved = await User.updateOne(
-    { _id: user._id, $expr: { $lte: [{ $add: ['$storageUsed', total] }, '$storageQuota'] } },
-    { $inc: { storageUsed: total } },
-  );
-  if (!reserved.modifiedCount) {
+  if (!(await reserveQuota(user._id, total))) {
     await cleanup();
     throw new AppError(413, 'Không đủ dung lượng lưu trữ', 'QUOTA_EXCEEDED');
   }
 
+  // Mỗi tác vụ tự bắt lỗi để không còn tác vụ nào chạy tiếp sau khi đã rollback
+  const errors: unknown[] = [];
+  const thumbKeys: string[] = [];
+  const results = await mapLimit(uploaded, THUMBNAIL_CONCURRENCY, async (f, i) => {
+    try {
+      const name = cleanName(f.originalname) || 'khong-ten';
+      const mimeType = f.mimetype || 'application/octet-stream';
+      const thumbKey = await makeThumbnail(user.id, keys[i]!, mimeType);
+      if (thumbKey) thumbKeys.push(thumbKey);
+      return await File.create({
+        name,
+        mimeType,
+        kind: detectKind(name, mimeType),
+        size: f.size,
+        storageKey: keys[i],
+        thumbKey,
+        userId: user._id,
+        folderId: folder?._id ?? null,
+      });
+    } catch (err) {
+      errors.push(err);
+      return null;
+    }
+  });
+
+  if (errors.length) {
+    const created = results.filter((d) => d !== null);
+    await Promise.all([
+      cleanup(),
+      ...thumbKeys.map((k) => storage.remove(k)),
+      File.deleteMany({ _id: { $in: created.map((d) => d._id) } }),
+      refundQuota(user._id, total),
+    ]);
+    throw errors[0];
+  }
+
+  const docs = results.filter((d) => d !== null);
+  for (const d of docs) logActivity(user._id, 'upload', d._id, d.size);
+  res.status(201).json({ files: docs.map(toFileDTO) });
+});
+
+/* ------------------------------------------- upload theo đoạn (resume) */
+
+const MAX_CHUNK = 16 * 1024 * 1024;
+const UPLOAD_SESSION_HOURS = 24;
+const busyUploads = new Set<string>();
+
+async function getOwnedUpload(userId: string, id: string) {
+  if (!Types.ObjectId.isValid(id)) throw notFound('Không tìm thấy phiên tải lên');
+  const up = await Upload.findOne({ _id: id, userId });
+  if (!up) throw notFound('Phiên tải lên không tồn tại hoặc đã hết hạn');
+  return up;
+}
+
+/** Số byte đã nhận lấy từ kích thước file tạm trên đĩa, nên vẫn đúng khi một đoạn bị đứt giữa chừng. */
+const receivedOf = async (up: UploadDoc) => (await fsp.stat(storage.resolve(up.storageKey))).size;
+
+/** Mỗi phiên chỉ xử lý một request tại một thời điểm (ghi nối đuôi file tạm không an toàn khi song song). */
+async function withUploadLock<T>(up: UploadDoc, fn: () => Promise<T>) {
+  if (busyUploads.has(up.id)) throw new AppError(409, 'Phiên tải lên đang xử lý một đoạn khác', 'UPLOAD_BUSY');
+  busyUploads.add(up.id);
   try {
-    const docs = await Promise.all(
-      uploaded.map(async (f, i) => {
-        const name = cleanName(f.originalname) || 'khong-ten';
-        const mimeType = f.mimetype || 'application/octet-stream';
-        const thumbKey = await makeThumbnail(user.id, keys[i]!, mimeType);
-        return File.create({
-          name,
-          mimeType,
-          kind: detectKind(name, mimeType),
-          size: f.size,
-          storageKey: keys[i],
-          thumbKey,
-          userId: user._id,
-          folderId: folder?._id ?? null,
-        });
-      }),
-    );
-    for (const d of docs) logActivity(user._id, 'upload', d._id, d.size);
-    res.status(201).json({ files: docs.map(toFileDTO) });
+    return await fn();
+  } finally {
+    busyUploads.delete(up.id);
+  }
+}
+
+const createUploadSchema = z.object({
+  name: nameSchema,
+  size: z.number().int().min(1),
+  mimeType: z.string().max(255).optional(),
+  folderId: folderRef,
+});
+
+filesRouter.post('/files/uploads', async (req, res) => {
+  const user = currentUser(req);
+  const body = parse(createUploadSchema, req.body ?? {});
+  if (body.size > env.maxFileSize) throw new AppError(413, `File vượt quá giới hạn ${env.MAX_FILE_SIZE_MB} MB`, 'FILE_TOO_LARGE');
+  const folder = await resolveTargetFolder(user.id, body.folderId);
+  if (!(await reserveQuota(user._id, body.size))) throw new AppError(413, 'Không đủ dung lượng lưu trữ', 'QUOTA_EXCEEDED');
+
+  const storageKey = storage.newKey(user.id, '.part');
+  try {
+    storage.userDir(user.id);
+    await fsp.writeFile(storage.resolve(storageKey), '');
+    const up = await Upload.create({
+      userId: user._id,
+      name: body.name,
+      mimeType: body.mimeType || 'application/octet-stream',
+      size: body.size,
+      folderId: folder?._id ?? null,
+      storageKey,
+      expiresAt: new Date(Date.now() + UPLOAD_SESSION_HOURS * 3_600_000),
+    });
+    res.status(201).json({ upload: { id: up.id as string, received: 0, size: up.size } });
   } catch (err) {
-    await cleanup();
-    await User.updateOne({ _id: user._id }, { $inc: { storageUsed: -total } });
+    await storage.remove(storageKey);
+    await refundQuota(user._id, body.size);
     throw err;
   }
+});
+
+filesRouter.get('/files/uploads/:id', async (req, res) => {
+  const up = await getOwnedUpload(currentUser(req).id, req.params.id);
+  res.json({ received: await receivedOf(up), size: up.size });
+});
+
+filesRouter.put('/files/uploads/:id', async (req, res) => {
+  const { offset } = parse(z.object({ offset: z.coerce.number().int().min(0) }), req.query);
+  const up = await getOwnedUpload(currentUser(req).id, req.params.id);
+  await withUploadLock(up, async () => {
+    const current = await receivedOf(up);
+    if (offset !== current) throw new AppError(409, 'Sai vị trí đoạn tải lên', 'OFFSET_MISMATCH', { received: current });
+    const room = Math.min(up.size - current, MAX_CHUNK);
+    if (room <= 0) throw new AppError(409, 'Phiên tải lên đã nhận đủ dữ liệu', 'UPLOAD_COMPLETE');
+    let seen = 0;
+    const limit = new Transform({
+      transform(chunk: Buffer, _enc, cb) {
+        seen += chunk.length;
+        cb(seen > room ? new AppError(413, 'Đoạn tải lên vượt quá kích thước cho phép', 'CHUNK_TOO_LARGE') : null, chunk);
+      },
+    });
+    try {
+      await pipeline(req, limit, fs.createWriteStream(storage.resolve(up.storageKey), { flags: 'a' }));
+    } catch (err) {
+      // Client ngắt kết nối giữa đoạn: không còn ai nhận phản hồi, phần đã ghi vẫn được giữ để resume
+      if ((err as NodeJS.ErrnoException).code === 'ERR_STREAM_PREMATURE_CLOSE') return;
+      throw err;
+    }
+    res.json({ received: current + seen });
+  });
+});
+
+filesRouter.post('/files/uploads/:id/complete', async (req, res) => {
+  const user = currentUser(req);
+  const up = await getOwnedUpload(user.id, req.params.id);
+  const file = await withUploadLock(up, async () => {
+    if ((await receivedOf(up)) !== up.size) throw new AppError(409, 'Chưa tải lên đủ dữ liệu', 'UPLOAD_INCOMPLETE');
+    const folder = await resolveTargetFolder(user.id, up.folderId ? String(up.folderId) : null);
+    const finalKey = storage.newKey(user.id);
+    let thumbKey: string | null = null;
+    await fsp.rename(storage.resolve(up.storageKey), storage.resolve(finalKey));
+    try {
+      thumbKey = await makeThumbnail(user.id, finalKey, up.mimeType);
+      const doc = await File.create({
+        name: up.name,
+        mimeType: up.mimeType,
+        kind: detectKind(up.name, up.mimeType),
+        size: up.size,
+        storageKey: finalKey,
+        thumbKey,
+        userId: user._id,
+        folderId: folder?._id ?? null,
+      });
+      await Upload.deleteOne({ _id: up._id });
+      return doc;
+    } catch (err) {
+      // Trả file tạm về chỗ cũ để client có thể gọi lại complete
+      await fsp.rename(storage.resolve(finalKey), storage.resolve(up.storageKey)).catch(() => undefined);
+      await storage.remove(thumbKey);
+      throw err;
+    }
+  });
+  logActivity(user._id, 'upload', file._id, file.size);
+  res.status(201).json({ file: toFileDTO(file) });
+});
+
+filesRouter.delete('/files/uploads/:id', async (req, res) => {
+  const up = await getOwnedUpload(currentUser(req).id, req.params.id);
+  await withUploadLock(up, () => discardUpload(up));
+  res.status(204).end();
 });
 
 /* --------------------------------------------------------------- drive */
 
 filesRouter.get('/drive', async (req, res) => {
   const user = currentUser(req);
-  const q = parse(sortSchema.extend({ folderId: folderRef }), req.query);
+  const q = parse(
+    sortSchema.extend({
+      folderId: folderRef,
+      page: z.coerce.number().int().min(1).default(1),
+      limit: z.coerce.number().int().min(1).max(500).default(DRIVE_PAGE_SIZE),
+    }),
+    req.query,
+  );
   const folder = await resolveTargetFolder(user.id, q.folderId);
   const dir = q.order === 'asc' ? 1 : -1;
-  const [folders, files, breadcrumbs] = await Promise.all([
+  const fileFilter = { userId: user._id, folderId: folder?._id ?? null, trashedAt: null };
+  // Thư mục luôn trả đủ ở mọi trang (ít và cần cho điều hướng); chỉ file được phân trang
+  const [folders, files, totalFiles, breadcrumbs] = await Promise.all([
     Folder.find({ userId: user._id, parentId: folder?._id ?? null, trashedAt: null })
       .collation({ locale: 'vi' })
       .sort(q.sort === 'name' ? { name: dir } : { createdAt: -1 }),
-    File.find({ userId: user._id, folderId: folder?._id ?? null, trashedAt: null })
+    File.find(fileFilter)
       .collation({ locale: 'vi' })
       .sort({ [q.sort]: dir, _id: dir })
-      .limit(5000),
+      .skip((q.page - 1) * q.limit)
+      .limit(q.limit),
+    File.countDocuments(fileFilter),
     breadcrumbsOf(folder),
   ]);
   res.json({
@@ -145,6 +325,9 @@ filesRouter.get('/drive', async (req, res) => {
     breadcrumbs,
     folders: folders.map(toFolderDTO),
     files: files.map(toFileDTO),
+    totalFiles,
+    page: q.page,
+    hasMore: q.page * q.limit < totalFiles,
   });
 });
 
@@ -159,7 +342,7 @@ filesRouter.get('/files', async (req, res) => {
   const user = currentUser(req);
   const q = parse(searchSchema, req.query);
   const filter: Record<string, unknown> = { userId: user._id, trashedAt: null };
-  if (q.q) filter.name = { $regex: escapeRegex(q.q), $options: 'i' };
+  if (q.q) filter.nameNorm = { $regex: escapeRegex(normalizeName(q.q)) };
   if (q.kind) filter.kind = q.kind;
   const dir = q.order === 'asc' ? 1 : -1;
   const [items, total] = await Promise.all([

@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import type {
   AdminUser,
@@ -22,10 +22,14 @@ export type SortOrder = 'asc' | 'desc';
 /* ----------------------------------------------------------------- drive */
 
 export function useDrive(folderId: string | undefined, sort: SortKey, order: SortOrder) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['drive', folderId ?? 'root', sort, order],
-    queryFn: async () =>
-      (await api.get<DriveListing>('/drive', { params: { folderId: folderId ?? 'root', sort, order } })).data,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) =>
+      (await api.get<DriveListing>('/drive', { params: { folderId: folderId ?? 'root', sort, order, page: pageParam } })).data,
+    getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
+    // Gộp mọi trang đã tải thành một danh sách file; thư mục và breadcrumb lấy từ trang mới nhất
+    select: (d): DriveListing => ({ ...d.pages[d.pages.length - 1]!, files: d.pages.flatMap((p) => p.files) }),
     placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === (folderId ?? 'root') ? prev : undefined),
   });
 }
